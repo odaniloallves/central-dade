@@ -590,7 +590,7 @@ const addDias = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.get
 const hoje = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 async function loadAll() {
   await db(`central_propostas?status=eq.ativa&deleted_at=is.null&data_expiracao=lt.${hoje()}`, 'PATCH', { status:'expirada' });
-  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp] = await Promise.all([
+  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met] = await Promise.all([
     db('central_clientes?select=*&order=nome.asc'),
     db('central_briefings?select=*&order=created_at.desc'),
     db('central_copys?select=*&order=updated_at.desc'),
@@ -601,8 +601,10 @@ async function loadAll() {
     db('central_planos?select=*&order=created_at.asc'),
     db('central_fechamentos?select=*&order=mes.desc'),
     db('central_config?select=*&chave=eq.imposto'),
+    db('central_config?select=*&chave=eq.metas'),
   ]);
   S.pla = pla; S.fec = fec; S.imp = (imp[0] && imp[0].valor) || { tipo:'percentual', valor:null };
+  S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0];
   S.tar = tar;
   S.pre = pre; S.cond = (cfg[0] && cfg[0].valor && cfg[0].valor.itens) || [];
   pro.forEach(p => (p.servicos = p.servicos || []).sort((a, b) => a.ordem - b.ordem || a.id - b.id));
@@ -729,7 +731,7 @@ V[''] = () => {
     ...rasc.map(x => `<div class="row"><div>Copy de ${esc(copNome(x))} em rascunho<small>${esc(x.receita)} · versão ${x.versao}</small></div><a class="btn btn-secondary btn-sm" href="#/copy/${x.id}">Revisar</a></div>`),
   ];
   const hr = new Date().getHours();
-  return head(hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite', `${diaLongo(hoje()).replace(/^./, c => c.toUpperCase())}. Arraste os cards para ver o resumo da dade.`) +
+  return head((hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite') + ', Dan', `${diaLongo(hoje()).replace(/^./, c => c.toUpperCase())}. Arraste os cards para ver o resumo da dade.`) +
     carrossel({ pend, novos, rasc, ativas, dias }) +
     `<div class="grid2"><div class="panel"><h2>Precisa de você</h2>${pend.join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada pendente.</p>'}</div>
     <div class="panel"><h2>Últimas entradas</h2>${b.slice(0, 6).map(x => `<div class="row"><div><a href="#/briefing/${x.id}">${esc(briNome(x))}</a><small>${TIPO[x.tipo] || ''} · ${fdate(x.created_at)}</small></div>${badge(STB[x.status] || STB.novo)}</div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum briefing recebido ainda.</p>'}</div></div>`;
@@ -739,6 +741,7 @@ V[''] = () => {
 let cvPos = 0;
 const CVI = {
   tar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 15 11 17 15 13"/>',
+  meta:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
   pend:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
   fin:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
   pro:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
@@ -758,6 +761,8 @@ function carrossel({ pend, novos, rasc, ativas, dias }) {
   const tira = h => String(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const cards = [
     ['tar', 'Tarefas de hoje', tt ? `${okh.length} de ${tt}` : '', `<div class="cv-big">${ph.length}</div><div class="cv-sub">${ph.length ? (ph.length === 1 ? 'tarefa em aberto' : 'tarefas em aberto') : tt ? 'Tudo feito por hoje.' : 'Nenhuma tarefa para hoje.'}</div>${tt ? `<div class="prog"><div style="width:${okh.length / tt * 100}%"></div></div>` : ''}${ph[0] ? `<ul class="cv-list"><li>Próxima: <b>${esc(ph[0].texto)}</b></li></ul>` : ''}`, '#/agenda', 'Abrir agenda'],
+    (() => { const g = metaInfo(m); return ['meta', 'Meta do mês', mesCurto(m), g.meta == null ? `<div class="cv-big" style="font-size:30px;line-height:1.15">Defina a meta de ${mesCurto(m)}</div><div class="cv-sub" style="margin-top:8px">Coloque quanto quer faturar no mês e acompanhe aqui o quanto falta.</div>` :
+      `<div class="cv-big">${Math.round(g.pct)}%</div><div class="cv-sub">${money(g.rec)} de ${money(g.meta)}</div><div class="prog"><div style="width:${Math.min(100, g.pct)}%"></div></div><div style="margin-top:6px">${g.falta ? kv('Falta', money(g.falta)) + (g.resta ? kv(`Por dia, nos ${g.resta} ${g.resta === 1 ? 'dia que resta' : 'dias que restam'}`, money(g.porDia)) : '') : kv('Meta batida', '+' + money(g.rec - g.meta))}</div>`, '#/financeiro', g.meta == null ? 'Definir meta' : 'Ver financeiro']; })(),
     ['pend', 'Precisa de você', '', `<div class="cv-big">${pend.length}</div><div class="cv-sub">${pend.length ? (pend.length === 1 ? 'coisa esperando você' : 'coisas esperando você') : 'Nada pendente. Bom sinal.'}</div>${pend.length ? `<ul class="cv-list">${pend.slice(0, 3).map(r => `<li>${esc(tira(r).replace(/ (Abrir|Ver|Revisar|Marcar como emitida|Marcar como enviado)$/, ''))}</li>`).join('')}</ul>` : ''}`, '#/', ''],
     ['fin', 'Financeiro do mês', mesCurto(m), `<div class="cv-big money">${money(ent)}</div><div class="cv-sub">entrou em ${mesCurto(m)}</div><div style="margin-top:10px">${kv('A receber de mensalidades', money(aRec))}${kv('Receita recorrente', money(recorrente(m)))}${impostoDe(ent) != null ? kv('Imposto do mês', money(impostoDe(ent))) : ''}</div>`, '#/financeiro', 'Abrir financeiro'],
     ['pro', 'Propostas ativas', '', `<div class="cv-big">${ativas.length}</div><div class="cv-sub">${money(soma(ativas))} em negociação</div><div style="margin-top:10px">${kv('Vencem em até 7 dias', vence.length)}${kv('Fechadas este mês', live(S.pro).filter(x => x.status === 'fechada' && ((x.aprovada_em || x.updated_at || '').slice(0, 7) === m)).length)}</div>`, '#/propostas', 'Ver propostas'],
@@ -875,6 +880,10 @@ function entradasDo(m) {
     if (p.forma_pagamento === 'pix' && fi.slice(0, 7) === m) out.push({ d:fi, quem:p.cliente_nome, oque:`Segunda metade · proposta nº ${numProp(p)}`, v:u - half(u) }); });
   return out.sort((a, b) => a.d.localeCompare(b.d));
 }
+const metaDo = m => { const x = S.metas || {}, v = x.meses && x.meses[m]; return v != null ? +v : x.padrao != null ? +x.padrao : null; };
+const metaInfo = m => { const meta = metaDo(m), rec = entradasDo(m).reduce((a, e) => a + e.v, 0); if (meta == null) return { meta, rec };
+  const ult = +fimMes(m).slice(8), hj = hoje(), dia = m === hj.slice(0, 7) ? +hj.slice(8) : m < hj.slice(0, 7) ? ult : 0, resta = Math.max(0, ult - dia + (m === hj.slice(0, 7) ? 1 : 0)), falta = Math.max(0, meta - rec);
+  return { meta, rec, pct:meta ? rec / meta * 100 : 0, falta, resta, porDia:resta ? falta / resta : 0, esperado:meta * dia / ult }; };
 const impostoDe = rec => { const i = S.imp || {}; if (i.valor == null || i.valor === '') return null; return i.tipo === 'fixo' ? +i.valor : rec * +i.valor / 100; };
 V.financeiro = arg => {
   const m = /^\d{4}-\d{2}$/.test(arg || '') ? arg : mesAtual(), comp = mesAdd(m, -1), atual = m === mesAtual();
@@ -891,6 +900,10 @@ V.financeiro = arg => {
   return head('Financeiro', 'O que entrou, o que falta receber e quanto separar de imposto, mês a mês.') +
     `<div class="fin-nav"><a class="btn btn-secondary btn-sm" href="#/financeiro/${mesAdd(m, -1)}" aria-label="Mês anterior">‹</a><strong>${mesNome(m)}</strong><a class="btn btn-secondary btn-sm" href="#/financeiro/${mesAdd(m, 1)}" aria-label="Próximo mês">›</a>${atual ? '' : '<a class="btn btn-secondary btn-sm hj" href="#/financeiro">Voltar para este mês</a>'}</div>
     <div class="stats-block"><div class="stats-row" ${g4}>${stat('Entrou no mês', money(rec), 'green') + stat('A receber de mensalidades', money(aReceber), 'yellow') + stat('Receita recorrente', money(recorrente(m)), 'purple') + stat('Imposto do mês', imp == null ? 'Definir' : money(imp), 'muted')}</div></div>
+    ${(() => { const g = metaInfo(m), x = S.metas || {}, propria = x.meses && x.meses[m] != null;
+      return `<div class="panel" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><h2 style="margin:0">Meta de ${mesCurto(m)}</h2>${g.meta != null ? `<span style="font-size:14px;color:var(--text-secondary)"><strong style="color:var(--text-primary)">${money(g.rec)}</strong> de ${money(g.meta)} · ${Math.round(g.pct)}%</span>` : ''}</div>
+      ${g.meta != null ? `<div class="prog" style="margin:14px 0 6px"><div style="width:${Math.min(100, g.pct)}%"></div></div><p class="hint" style="margin:0 0 14px">${g.falta ? `Faltam ${money(g.falta)}${g.resta && m === mesAtual() ? `, ${money(g.porDia)} por dia nos ${g.resta} ${g.resta === 1 ? 'dia que resta' : 'dias que restam'}` : ''}.` : `Meta batida, ${money(g.rec - g.meta)} acima.`} ${propria ? 'Meta definida só para este mês.' : 'Usando a meta padrão.'}</p>` : '<p class="hint" style="margin:8px 0 14px">Defina quanto quer faturar. A meta conta tudo o que entrou no mês: mensalidades e pagamentos de propostas.</p>'}
+      <form class="imp-form" data-s="meta-save" data-m="${m}"><div class="form-group"><label for="meta_v">Meta de ${mesCurto(m)} (R$)</label><input id="meta_v" class="money" inputmode="numeric" placeholder="10.000,00" value="${g.meta != null ? fmtVal(g.meta) : ''}"></div><label class="ck" style="flex:1 1 220px;margin:0 0 14px"><input type="checkbox" id="meta_p" ${propria ? '' : 'checked'}>Usar também nos próximos meses</label><button class="btn btn-secondary" type="submit" style="height:52px">Salvar meta</button></form></div>`; })()}
     <div class="panel" style="margin-bottom:16px"><h2>Mensalidades a cobrar em ${mesCurto(m)}</h2><p class="hint" style="margin:-4px 0 8px">Trabalho feito em ${mesNome(comp)}. ${cobr.some(pacote) ? 'Nos pacotes, confirme a quantidade entregue e o valor se ajusta.' : ''}</p>${cobr.map(linha).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano mensal com cobrança neste mês.</p>'}</div>
     <div class="grid2"><div class="panel"><h2>Entradas de ${mesCurto(m)}</h2>${ent.map(e => `<div class="row"><div>${esc(e.quem)}<small>${dmy(e.d)} · ${esc(e.oque)}</small></div><strong>${money(e.v)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada recebido neste mês ainda. As entradas aparecem quando você marca um pagamento como recebido.</p>'}${ent.length ? `<div class="row"><div><strong>Total</strong></div><strong>${money(rec)}</strong></div>` : ''}</div>
     <div class="panel"><h2>Imposto</h2><form class="imp-form" data-s="imp-save"><div class="form-group"><label for="imp_t">Como calcular</label><select id="imp_t"><option value="percentual" ${S.imp.tipo !== 'fixo' ? 'selected' : ''}>Percentual sobre o que entrou</option><option value="fixo" ${S.imp.tipo === 'fixo' ? 'selected' : ''}>Valor fixo por mês (MEI)</option></select></div><div class="form-group"><label for="imp_v">${S.imp.tipo === 'fixo' ? 'Valor (R$)' : 'Alíquota (%)'}</label><input id="imp_v" inputmode="decimal" placeholder="${S.imp.tipo === 'fixo' ? '80,90' : '6'}" value="${S.imp.valor == null ? '' : String(S.imp.valor).replace('.', ',')}"></div><button class="btn btn-secondary" type="submit" style="height:52px">Salvar</button></form>
@@ -1304,6 +1317,17 @@ const F = {
     closeModal(); await sync('Plano salvo');
   },
   async 'pla-enc'(form) { const m = $('pl_fim').value; if (!/^\d{4}-\d{2}$/.test(m)) return toast('Informe o último mês trabalhado.'); await patch('pla', form.dataset.id, { encerrado_em:fimMes(m) }); closeModal(); await sync('Plano encerrado'); },
+  async 'meta-save'(form) {
+    const m = form.dataset.m, v = parseVal($('meta_v').value), padrao = $('meta_p').checked, x = JSON.parse(JSON.stringify(S.metas || { padrao:null, meses:{} }));
+    x.meses = x.meses || {};
+    if (!(v > 0)) return toast('Informe o valor da meta.');
+    if (padrao) { const velho = S.metas && S.metas.padrao != null ? +S.metas.padrao : null;
+      if (velho != null) for (let k = mesAdd(m, -12); k < m; k = mesAdd(k, 1)) if (x.meses[k] == null) x.meses[k] = velho;
+      x.padrao = v; delete x.meses[m]; }
+    else x.meses[m] = v;
+    if (S.metasRow) await db('central_config?chave=eq.metas', 'PATCH', { valor:x, updated_at:new Date().toISOString() }); else await db('central_config', 'POST', { chave:'metas', valor:x });
+    await sync('Meta salva');
+  },
   async 'imp-save'() {
     const tipo = $('imp_t').value === 'fixo' ? 'fixo' : 'percentual', raw = $('imp_v').value.trim(), v = raw ? parseFloat(raw.replace(/\./g, '').replace(',', '.')) : null;
     if (raw && !(v >= 0)) return toast('Informe um número. Ex.: 6 ou 80,90');
