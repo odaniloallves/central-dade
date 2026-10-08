@@ -30,4 +30,4 @@ async def main():
         for k in ['', 'financeiro']:
             await mp.goto(BASE + 'index.html#/' + k); await mp.wait_for_timeout(300); print('mobile', k, 'overflow', await mp.evaluate('document.documentElement.scrollWidth>innerWidth'))
         print('ERRS', errs); await b.close()
-asyncio.run(main())
+if __name__ == "__main__": asyncio.run(main())

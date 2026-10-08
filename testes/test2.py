@@ -2,7 +2,7 @@ import asyncio, json, uuid, datetime
 from urllib.parse import urlparse, parse_qsl
 from playwright.async_api import async_playwright
 BASE='http://localhost:8765/'
-DB={'central_tarefas':[],'central_planos':[],'central_fechamentos':[],'central_admins':[{'user_id':'u1'}],'central_clientes':[{'id':'cl1','nome':'Studio Forma Fitness','contato':'Marina','email':None,'whatsapp':None,'segmento':'Fitness','created_at':'2026-10-01T10:00:00Z','deleted_at':None}],
+DB={'central_tarefas':[],'central_entradas':[],'central_planos':[],'central_fechamentos':[],'central_admins':[{'user_id':'u1'}],'central_clientes':[{'id':'cl1','nome':'Studio Forma Fitness','contato':'Marina','email':None,'whatsapp':None,'segmento':'Fitness','created_at':'2026-10-01T10:00:00Z','deleted_at':None}],
     'central_briefings':[{'id':'b1','cliente_id':None,'tipo':'identidade','empresa':'Rota Log','responsavel':'Bruno','email':'b@r.com','whatsapp':'11','respostas':{'etapas':[]},'status':'novo','created_at':'2026-10-06T10:00:00Z','deleted_at':None}],
     'central_copys':[],'central_propostas':[
       {'id':1,'cliente_id':'cl1','cliente_nome':'Studio Forma Fitness','slug':'studio-forma-fitness','status':'ativa','prazo_meses':6,'condicao_pagamento':'50_50_data','data_proposta':'2026-09-20','data_expiracao':'2026-10-10','created_at':'2026-09-20T10:00:00Z','deleted_at':None},
