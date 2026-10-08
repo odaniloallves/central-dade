@@ -1,0 +1,270 @@
+
+const SB='https://hgkxybswazgcpqpksvkf.supabase.co',KEY='sb_publishable_4-plrhdRN1mZA6uDxnDmKA_muzq8QUu';
+const D=window.DADE,SEC=[["quemsomos", "Quem somos"], ["pilares", "Como pensamos"], ["escopo", "Escopo e entregas"], ["processo", "Como trabalhamos"], ["observacoes", "Observações"], ["fundador", "Quem conduz"], ["clientes", "Clientes"], ["investimento", "Investimento"]];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=window.dadeMoney;
+const dmy=d=>d?d.slice(0,10).split('-').reverse().join('/'):'';
+const nsec=id=>String(SEC.findIndex(s=>s[0]===id)+1).padStart(2,'0');
+const svgWpp='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+function aviso(titulo,texto,botao){return `<main class="expired"><div class="box"><img src="assets/img/dade/logo-dade-colorido.png" alt="dade"><h1>${titulo}</h1><p>${texto}</p>${botao||''}</div></main>`}
+function pagina(pr){
+  const svs=(pr.servicos||[]).map(s=>({...(window.DADE_SERVICOS[s.servico]||{nome:s.servico,subtitulo:'Serviço sob medida',escopo:['Escopo conforme alinhado com o cliente'],entrega:['Entrega conforme alinhado com o cliente']}),...s}));
+  const conta=s=>!s.opcional||s.aceito===true,opcs=pr.aprovada_em?[]:svs.filter(s=>s.opcional);
+  let tm=0,tu=0;svs.filter(conta).forEach(s=>s.cobranca==='mensal'?tm+=Number(s.valor):tu+=Number(s.valor));
+  const prazosHtml=svs.some(s=>s.prazo)?`<div class="prazos"><div class="k">Prazos deste projeto</div>${svs.filter(s=>s.prazo).map(s=>`<div class="pz"><span>${esc(s.nome)}</span><strong>${esc(s.prazo)}</strong></div>`).join('')}<p>Os prazos contam a partir do primeiro pagamento.</p></div>`:'';
+  let headline='Sob consulta',headSub='';
+  if(tu>0&&tm>0){headline=money(tu);headSub='+ '+money(tm)+'/mês'}else if(tu>0){headline=money(tu)}else if(tm>0){headline=money(tm)+' <small>/mês</small>'}
+  const cliente=esc(pr.cliente_nome),wpp=D.whatsapp,wppFmt=wpp.replace(/^55(\d{2})(\d{4,5})(\d{4})$/,'($1) $2-$3');
+  const wppLink='https://wa.me/'+wpp+'?text='+encodeURIComponent('Olá! Estou vendo a proposta da dade.design para '+pr.cliente_nome+'.');
+  const validade=dmy(pr.data_expiracao),numero=String(pr.id).padStart(4,'0');
+  const aprovada=!!pr.aprovada_em,payLink='pagamento.html?slug='+encodeURIComponent(pr.slug);
+  const condTxt=[tu>0?'Pix: 50% na aprovação e 50% na entrega':'',tu>0?'Cartão de crédito: valor total em até 4x':'',tm>0?'Mensalidade por Pix'+(pr.dia_cobranca?', todo dia '+Number(pr.dia_cobranca):'')+', após cada mês de trabalho':''].filter(Boolean).join('<br>');
+  document.title='Proposta para '+pr.cliente_nome+' | dade.design';
+  if(pr.status==='expirada'||pr.status==='perdida') return aviso('Esta proposta não está mais disponível',`A proposta preparada para <strong>${cliente}</strong>${validade?` era válida até ${validade}`:''}. Se ainda fizer sentido para vocês, é só chamar que eu preparo uma versão atualizada.`,`<a href="${wppLink}" target="_blank" rel="noopener" class="btn btn-primary">${svgWpp}Pedir nova proposta</a>`);
+  return `<div id="progressBar"></div>
+
+<nav class="pnav" id="pnav">
+  <img class="brand" src="assets/img/dade/logo-dade-colorido.png" alt="dade">
+  <div class="nl">
+    ${SEC.map(([id,nome])=>`<a href="#${id}">${nome}</a>`).join("")}
+  </div>
+</nav>
+
+<div class="bfix" id="bfix">
+  <div class="vl">${validade?`<span class="pre">Válida até </span><span class="pre-m">Até </span><strong>${validade}</strong><span class="cli"> para ${cliente}</span>`:`<span class="cli">Proposta para </span><strong>${cliente}</strong>`}</div>
+  <a href="${payLink}" class="btn btn-primary">${aprovada?"Ver pagamento":"Aprovar proposta"}</a>
+</div>
+
+<!-- HERO -->
+<header class="hero" id="hero">
+  <img class="hero-mark" src="assets/img/dade/icone-dade-branco.png" alt="">
+  <div class="hero-grid">
+    <div>
+      <span class="pill"><span class="dot"></span>Proposta nº ${numero}</span>
+      <div class="for">Proposta preparada para</div>
+      <h1>${cliente}</h1>
+    </div>
+    <div class="hero-meta">
+      <dl>
+        <div><dt>Preparada por</dt><dd>dade.design</dd></div>
+        <div><dt>Data</dt><dd>${dmy(pr.data_proposta)}</dd></div>
+        ${validade?`<div><dt>Válida até</dt><dd>${validade}</dd></div>`:""}
+        <div><dt>Serviços</dt><dd>${svs.length} ${svs.length===1?"serviço":"serviços"}</dd></div>
+      </dl>
+    </div>
+  </div>
+</header>
+
+<!-- SUMÁRIO -->
+<section class="band band--light" id="sumario">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">00</div>
+      <div><div class="eyebrow">Sumário</div><h2>O que você vai encontrar aqui</h2></div>
+    </div>
+    <ol class="summary">
+      ${SEC.map(([id,nome])=>`<li><a href="#${id}"><span class="n">${nsec(id)}</span>${nome}</a></li>`).join("")}
+    </ol>
+  </div>
+</section>
+
+<!-- QUEM SOMOS -->
+<section class="band band--dark" id="quemsomos">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('quemsomos')}</div>
+      <div><div class="eyebrow">Quem somos</div></div>
+    </div>
+    <div class="about">
+      <h3>Design, tecnologia e estratégia <span class="muted">trabalhando juntos, do primeiro rascunho ao que vai para o ar.</span></h3>
+      <div class="copy">
+        <p>Olá, <strong>${cliente}</strong>. Obrigado pela oportunidade de apresentar esta proposta.</p>
+        <p>A <strong>dade.design</strong> é um creative technology studio de São Paulo, ativo desde 2020. Criamos marcas, sites, apresentações, campanhas, protótipos e automações para empresas que querem se comunicar com mais clareza e mais presença.</p>
+        <p>O nosso jeito de trabalhar junta pensamento estratégico com execução cuidadosa: cada entrega nasce de um entendimento real do seu negócio, não de um modelo pronto.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILARES -->
+<section class="band band--light" id="pilares">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('pilares')}</div>
+      <div><div class="eyebrow">Como pensamos</div><h2>Três coisas que guiam todo projeto</h2></div>
+    </div>
+    <div class="pillars">
+      <div class="pillar"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg></div><h4>Estratégia</h4><p>Antes de desenhar, entendemos o objetivo, o público e o que precisa mudar. É isso que define o que vale a pena fazer.</p></div>
+      <div class="pillar"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></div><h4>Design</h4><p>Hierarquia, contraste e consistência. Um visual que funciona em qualquer tela e em qualquer ponto de contato.</p></div>
+      <div class="pillar"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h4>Tecnologia</h4><p>Sites, protótipos e automações que saem do papel e funcionam de verdade, sem depender de dez fornecedores diferentes.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ESCOPO -->
+<section class="band band--dark" id="escopo">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('escopo')}</div>
+      <div><div class="eyebrow">Escopo e entregas</div><h2>O que está incluso</h2><p class="lede">${pr.apresentacao?esc(pr.apresentacao):"Cada serviço abaixo mostra o que será feito e o que você recebe no final."}</p></div>
+    </div>
+    <div class="scope">
+      ${svs.map((s,idx)=>`
+      <article class="scope-card">
+        <div>
+          <div class="n">Serviço ${String(idx+1).padStart(2,"0")}</div>
+          <h3>${esc(s.nome)}</h3>
+          ${s.subtitulo?`<p class="sub">${esc(s.subtitulo)}</p>`:""}
+          ${s.opcional?`<p class="tag-opc">Opcional · ${money(s.valor)}${s.cobranca==="mensal"?" por mês":""}</p>`:""}
+          ${s.prazo?`<p class="sub"><strong>Prazo:</strong> ${esc(s.prazo)}</p>`:""}
+        </div>
+        <div><div class="k">Escopo</div>
+          <ul class="blist">${(s.escopo||[]).map(i=>`<li>${esc(i)}</li>`).join("")}</ul>
+        </div>
+        <div>${(s.entrega||[]).length?`<div class="k">Entrega</div>
+          <ul class="blist">${s.entrega.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`:""}${s.nao_incluso?`<div class="k" style="margin-top:22px">Não incluso</div>
+          <ul class="blist"><li>${esc(s.nao_incluso)}</li></ul>`:""}</div>
+      </article>`).join("")}
+    </div>
+  </div>
+</section>
+
+<!-- PROCESSO -->
+<section class="band band--light" id="processo">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('processo')}</div>
+      <div><div class="eyebrow">Como trabalhamos</div><h2>Do briefing à entrega</h2></div>
+    </div>
+    <div class="proc">
+      <div class="proc-step"><div class="st">Etapa 1</div><h4>Imersão</h4><p>Conversamos sobre o objetivo, o público e as referências. Tudo o que orienta o projeto sai daqui.</p></div>
+      <div class="proc-step"><div class="st">Etapa 2</div><h4>Direção</h4><p>Apresentamos o caminho criativo e alinhamos antes de partir para a execução completa.</p></div>
+      <div class="proc-step"><div class="st">Etapa 3</div><h4>Criação</h4><p>Desenvolvimento de todas as peças, com rodadas de ajuste combinadas no escopo.</p></div>
+      <div class="proc-step"><div class="st">Etapa 4</div><h4>Entrega</h4><p>Arquivos finais organizados, publicação quando for o caso e orientação de uso.</p></div>
+    </div>${prazosHtml}
+  </div>
+</section>
+
+<!-- OBSERVAÇÕES -->
+<section class="band band--fog" id="observacoes">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('observacoes')}</div>
+      <div><div class="eyebrow">Observações</div><h2>Bom saber antes de começar</h2></div>
+    </div>
+    <div class="notes">${(pr.condicoes||[]).map(c=>`<div class="note"><h4>${esc(c.titulo)}</h4><p>${esc(c.texto)}</p></div>`).join("")}</div>
+  </div>
+</section>
+
+<!-- QUEM CONDUZ -->
+<section class="band band--dark" id="fundador">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('fundador')}</div>
+      <div><div class="eyebrow">Quem conduz o projeto</div></div>
+    </div>
+    <div class="founder">
+      <div class="founder-photo">
+        <img class="photo" src="assets/img/dade/fundador.jpg" alt="${esc(D.fundador)}">
+      </div>
+      <div class="founder-bio">
+        <h3 style="margin-top:0">${esc(D.fundador)}</h3>
+        <div class="role">${esc(D.cargo)}</div>
+        <div class="copy">
+          <p>Designer com atuação em marca, motion, ilustração e produtos digitais. Fundou a dade.design para unir criação e tecnologia no mesmo lugar e entregar projetos completos, sem ruído entre quem pensa e quem executa.</p>
+          <p>Você fala direto com quem está fazendo o seu projeto, <strong>do primeiro contato até a entrega final</strong>.</p>
+        </div>
+        <dl class="facts">
+          <div><dt>Desde</dt><dd>2020</dd></div>
+          <div><dt>Base</dt><dd>São Paulo, atendendo todo o Brasil</dd></div>
+          <div><dt>Atuação</dt><dd>Marca, digital e automação</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLIENTES -->
+<section class="band band--light" id="clientes">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('clientes')}</div>
+      <div><div class="eyebrow">Clientes</div><h2 class="h2-clientes">Algumas das empresas que confiaram na dade para construir algo importante.</h2></div>
+    </div>
+    <div class="clients-row"><img src="assets/img/clientes/hisense.png" alt="Hisense" loading="lazy"><img src="assets/img/clientes/electrolux.png" alt="Electrolux" loading="lazy"><img src="assets/img/clientes/1a99.png" alt="1A99" loading="lazy"><img src="assets/img/clientes/up365.png" alt="UP365" loading="lazy"><img src="assets/img/clientes/logshare.png" alt="LogShare" loading="lazy"><img src="assets/img/clientes/agencias-lucrativas.png" alt="Agências Lucrativas" loading="lazy"><img src="assets/img/clientes/dessafit.png" alt="DessaFit" loading="lazy"></div>
+  </div>
+</section>
+
+<!-- INVESTIMENTO -->
+<section class="band band--dark" id="investimento">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-number">${nsec('investimento')}</div>
+      <div><div class="eyebrow">Investimento</div><h2>Valores e condições</h2></div>
+    </div>
+    <div class="inv">
+      <div class="inv-head">
+        <div>
+          <div class="lbl">Investimento do projeto</div>
+          <div class="val" style="margin-top:14px">${headline}</div>
+          ${headSub?`<div class="lbl" style="margin-top:12px;font-size:18px;color:var(--ink-200)">${headSub}</div>`:""}
+        </div>
+        <div class="items">${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}</div>
+      </div>
+      <div class="pay">
+        ${tu>0?`
+        <div class="pay-card"><div class="pk">Valor único</div><div class="pv">${money(tu)}</div><div class="pd">Referente à criação e entrega do projeto</div></div>
+        `:""}
+        ${tm>0?`
+        <div class="pay-card"><div class="pk">Valor mensal</div><div class="pv">${money(tm)}</div><div class="pd">${pr.prazo_meses>0?"Contrato inicial de "+Number(pr.prazo_meses)+" meses":"Valor recorrente mensal"}</div></div>
+        `:""}
+        ${opcs.length?`<div class="pay-card"><div class="pk">Opcionais, você escolhe na aprovação</div><div class="pv txt">${opcs.map(s=>esc(s.nome)+": + "+money(s.valor)+(s.cobranca==="mensal"?"/mês":"")).join("<br>")}</div></div>`:""}<div class="pay-card hl"><div class="pk">Condição de pagamento</div><div class="pv txt">${condTxt}</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="band band--dark cta" style="border-top:1px solid var(--hairline-dark)">
+  <div class="container">
+    <h2>Vamos tirar esse projeto do papel?</h2>
+    <p>Se estiver tudo certo, é só aprovar e escolher a forma de pagamento. Se quiser ajustar algo, me chama no WhatsApp.</p>
+    <div class="actions">
+      <a href="${payLink}" class="btn btn-primary">${aprovada?"Ver pagamento":"Aprovar proposta"}</a>
+      <a href="${wppLink}" class="btn btn-outline-dark" target="_blank" rel="noopener">${svgWpp}Falar no WhatsApp</a>
+    </div>
+    <div class="contact">
+      <a href="mailto:${esc(D.email)}">${esc(D.email)}</a>
+      <a href="https://wa.me/${wpp}" target="_blank" rel="noopener">${wppFmt}</a>
+      <a href="https://${esc(D.site)}" target="_blank" rel="noopener">${esc(D.site)}</a>
+      ${D.instagram?`<a href="https://instagram.com/${esc(D.instagram)}" target="_blank" rel="noopener">@${esc(D.instagram)}</a>`:""}
+    </div>
+  </div>
+</section>
+
+<footer class="pf"><span>dade.design · creative technology studio · <a href="privacidade.html" style="text-decoration:underline">Aviso de privacidade</a></span><img src="assets/img/dade/logo-dade-branco.png" alt="dade"></footer>
+
+`;
+}
+function efeitos(){(function(){
+  var bar=document.getElementById('progressBar'),nav=document.getElementById('pnav'),bf=document.getElementById('bfix');
+  var links=document.querySelectorAll('.nl a'),secs=document.querySelectorAll('section[id]');
+  function onScroll(){
+    var h=document.documentElement.scrollHeight-window.innerHeight,s=window.scrollY;
+    bar.style.width=(h>0?s/h*100:0)+'%';
+    nav.classList.toggle('sc',s>60); bf.classList.toggle('vis',s>window.innerHeight*.6);
+    var cur=''; secs.forEach(function(sc){if(s>=sc.offsetTop-200)cur=sc.id});
+    links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur)});
+  }
+  window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+})();}
+(async()=>{
+  const slug=new URLSearchParams(location.search).get('slug')||'',root=document.getElementById('root');
+  let pr=null,falha=false;
+  if(slug){try{const r=await fetch(SB+'/rest/v1/rpc/central_proposta_publica',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({p_slug:slug})});if(r.ok)pr=await r.json();else falha=true}catch(e){falha=true}}
+  document.body.classList.remove('wait');
+  if(falha){root.innerHTML=aviso('Não foi possível abrir a proposta','Confira a sua conexão e recarregue a página.');return}
+  if(!pr){root.innerHTML=aviso('Proposta não encontrada','Confira o link que você recebeu ou fale com a dade.design.');return}
+  root.innerHTML=pagina(pr);
+  if(document.getElementById('progressBar'))efeitos();
+})();

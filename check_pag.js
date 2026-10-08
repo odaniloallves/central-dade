@@ -1,0 +1,120 @@
+
+const SB='https://hgkxybswazgcpqpksvkf.supabase.co',KEY='sb_publishable_4-plrhdRN1mZA6uDxnDmKA_muzq8QUu',D=window.DADE,money=window.dadeMoney;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dmy=d=>d?d.slice(0,10).split('-').reverse().join('/'):'';
+const root=document.getElementById('root'),slug=new URLSearchParams(location.search).get('slug')||'';
+const rpc=async(fn,body)=>{const r=await fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).message||'erro');return r.json()};
+const wpp=t=>'https://wa.me/'+D.whatsapp+'?text='+encodeURIComponent(t);
+const avisar=(subject,message)=>fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({access_key:D.avisoKey,subject,from_name:'Central dade',message})}).catch(()=>{});
+const half=v=>Math.round(v*50)/100;
+const linkOk=l=>/^https:\/\//i.test(l||'');
+const num=()=>String(pr.id).padStart(4,'0');
+let pr=null,forma='',sel=new Set(),docAceite='',nomeAceite='';
+const conta=s=>!s.opcional||(pr.aprovada_em?s.aceito===true:sel.has(String(s.id)));
+const tot=()=>{let m=0,u=0;(pr.servicos||[]).filter(conta).forEach(s=>s.cobranca==='mensal'?m+=Number(s.valor):u+=Number(s.valor));return{m,u}};
+function docOk(v){const d=v.replace(/\D/g,'');if(/^(\d)\1+$/.test(d))return false;
+  const dv=(n,w)=>{const r=n.split('').reduce((a,c,i)=>a+c*w[i],0)%11;return r<2?0:11-r};
+  if(d.length===11){const a=(n,l)=>{let s=0;for(let i=0;i<l;i++)s+=n[i]*(l+1-i);const r=(s*10)%11;return r===10?0:r};return a(d,9)==d[9]&&a(d,10)==d[10]}
+  if(d.length===14){const w1=[5,4,3,2,9,8,7,6,5,4,3,2],w2=[6,...w1];return dv(d.slice(0,12),w1)==d[12]&&dv(d.slice(0,13),w2)==d[13]}
+  return false}
+function aviso(t,p,extra=''){root.innerHTML=`<span class="eyebrow">dade.design</span><h1>${t}</h1><p class="lede">${p}</p>${extra}`}
+function resumo(){const{u}=tot(),fix=pr.servicos.filter(s=>!s.opcional||(pr.aprovada_em&&s.aceito));return `<div class="box"><h2>Resumo</h2>${fix.map(s=>`<div class="ln"><span>${esc(window.dadeServNome(s.servico))}${s.prazo?` <small>· ${esc(s.prazo)}</small>`:''}</span><span>${money(s.valor)}${s.cobranca==='mensal'?' <small>/mês</small>':''}</span></div>`).join('')}<div id="totais"></div></div>`}
+function mensalTxt(m){return `A mensalidade de <strong>${money(m)}</strong> é paga por Pix${pr.dia_cobranca?`, todo dia ${Number(pr.dia_cobranca)}`:''}, sempre depois de cada mês de trabalho. Nada é cobrado agora por ela.`}
+function opts(u,s){return `<button type="button" class="opt" role="radio" aria-checked="${s==='pix'}" data-f="pix"><b>Pix</b><span><strong>${money(half(u))}</strong> na aprovação e <strong>${money(u-half(u))}</strong> na entrega.</span></button>
+    <button type="button" class="opt" role="radio" aria-checked="${s==='cartao'}" data-f="cartao"><b>Cartão de crédito</b><span><strong>${money(u)}</strong> em até 4x. As parcelas e os juros aparecem na tela de pagamento.</span></button>`}
+function ligaOpts(){root.querySelectorAll('.opt[data-f]').forEach(b=>b.onclick=()=>{forma=b.dataset.f;root.querySelectorAll('.opt[data-f]').forEach(x=>x.setAttribute('aria-checked',x===b))})}
+function pinta(){ // parte que muda quando o cliente marca um opcional
+  const{m,u}=tot(),ops=pr.servicos.filter(s=>s.opcional&&sel.has(String(s.id)));
+  document.getElementById('totais').innerHTML=ops.map(s=>`<div class="ln"><span>${esc(window.dadeServNome(s.servico))} <small>· opcional</small></span><span>${money(s.valor)}${s.cobranca==='mensal'?' <small>/mês</small>':''}</span></div>`).join('')+(u>0?`<div class="ln"><span>Total do projeto</span><span>${money(u)}</span></div>`:'')+(m>0?`<div class="ln"><span>Mensalidade</span><span>${money(m)} <small>/mês</small></span></div>`:'');
+  const dyn=document.getElementById('dyn');if(!dyn)return;
+  dyn.innerHTML=u>0?`<div class="box"><h2>Como você prefere pagar${m>0?' o projeto':''}?</h2><div role="radiogroup" aria-label="Forma de pagamento">${opts(u,forma)}</div>${m>0?`<p class="obs">${mensalTxt(m)}</p>`:''}</div>`:`<div class="box"><h2>Pagamento</h2><p class="obs" style="margin-top:0">${mensalTxt(m)}</p></div>`;
+  ligaOpts();
+}
+function escolha(){
+  document.title='Aprovar proposta | dade.design';
+  const opc=pr.servicos.filter(s=>s.opcional),conds=pr.condicoes||[];
+  root.innerHTML=`<span class="eyebrow">Proposta nº ${num()}</span><h1>Aprovar proposta</h1><p class="lede">Proposta preparada para ${esc(pr.cliente_nome)}${pr.data_expiracao?`, válida até ${dmy(pr.data_expiracao)}`:''}.</p>${resumo()}
+  ${opc.length?`<div class="box"><h2>Quer incluir algum opcional?</h2>${opc.map(s=>`<button type="button" class="opt sq" role="checkbox" aria-checked="false" data-o="${s.id}"><b>${esc(window.dadeServNome(s.servico))}</b><span><strong>+ ${money(s.valor)}</strong>${s.cobranca==='mensal'?' por mês':''}</span></button>`).join('')}</div>`:''}
+  <div id="dyn"></div>
+  ${conds.length?`<div class="box"><h2>Condições desta proposta</h2><div class="conds" tabindex="0">${conds.map(c=>`<h3>${esc(c.titulo)}</h3><p>${esc(c.texto)}</p>`).join('')}</div></div>`:''}
+  <label class="fl" for="nome">Seu nome completo</label><input class="inp" id="nome" autocomplete="name" placeholder="Quem está aprovando a proposta">
+  <label class="fl" for="doc">CPF ou CNPJ</label><input class="inp" id="doc" inputmode="numeric" autocomplete="off" placeholder="Só os números">
+  <label class="aceite"><input type="checkbox" id="li"><span>Li e aceito as condições desta proposta, o escopo e os valores.</span></label>
+  <p class="priv">Seus dados ficam protegidos e são usados só para este projeto. <a href="privacidade.html" target="_blank" rel="noopener">Aviso de privacidade</a></p>
+  <p class="err" id="err" role="alert"></p>
+  <div class="acts"><button type="button" class="btn btn-primary" id="ok">Aprovar proposta</button></div>`;
+  root.querySelectorAll('.opt[data-o]').forEach(b=>b.onclick=()=>{const id=b.dataset.o;sel.has(id)?sel.delete(id):sel.add(id);b.setAttribute('aria-checked',sel.has(id));pinta()});
+  pinta();document.getElementById('ok').onclick=aprovar;
+}
+async function aprovar(){
+  const{u}=tot(),nome=document.getElementById('nome').value.trim(),doc=document.getElementById('doc').value,err=document.getElementById('err'),btn=document.getElementById('ok');
+  if(u>0&&!forma){err.textContent='Escolha a forma de pagamento.';return}
+  if(nome.length<2){err.textContent='Informe o seu nome para aprovar.';document.getElementById('nome').focus();return}
+  if(!docOk(doc)){err.textContent='Confira o CPF ou CNPJ. O número informado não é válido.';document.getElementById('doc').focus();return}
+  if(!document.getElementById('li').checked){err.textContent='Marque que você leu e aceita as condições para aprovar.';return}
+  err.textContent='';btn.disabled=true;btn.textContent='Aprovando…';
+  try{
+    const r=await rpc('central_aceitar_proposta',{p_slug:slug,p_nome:nome,p_documento:doc,p_forma:u>0?forma:null,p_opcionais:[...sel]});
+    if(!r)throw new Error('x');pr=r;docAceite=doc.replace(/\D/g,'');nomeAceite=nome;const t=tot(),ops=pr.servicos.filter(s=>s.opcional&&s.aceito).map(s=>window.dadeServNome(s.servico));
+    avisar(`Proposta aprovada — ${pr.cliente_nome}`,`${nome} aprovou a proposta nº ${num()} de ${pr.cliente_nome} e aceitou as condições.\nForma de pagamento: ${pr.forma_pagamento==='pix'?'Pix (50% agora, 50% na entrega)':pr.forma_pagamento==='cartao'?'Cartão de crédito'+(linkOk(pr.link_cartao)?'':' — FALTA ENVIAR O LINK DA INFINITEPAY'):'Mensalidade por Pix'}.\nTotal do projeto: ${money(t.u)}${t.m?`\nMensalidade: ${money(t.m)}`:''}${ops.length?`\nOpcionais escolhidos: ${ops.join(', ')}`:''}${pr.exige_contrato?'\nEsta proposta exige contrato formal: envie o contrato.':''}`);
+    aprovada(true);
+  }catch(e){btn.disabled=false;btn.textContent='Aprovar proposta';err.textContent='Não foi possível aprovar agora. Recarregue a página e tente de novo, ou fale com a dade pelo WhatsApp.'}
+}
+function cadastro(){
+  const el=document.getElementById('cad');if(!el)return;
+  const campo=(id,l,ph='',v='',extra='')=>`<label class="fl" for="c_${id}">${l}</label><input class="inp" id="c_${id}" placeholder="${ph}" value="${esc(v)}" ${extra}>`;
+  el.innerHTML=`<div class="box" style="border-color:var(--lime)"><h2>Falta um passo: os dados da empresa</h2><p class="obs" style="margin-top:0">Eles vão para a nota fiscal${pr.exige_contrato?' e para o contrato':''}. Leva menos de um minuto.</p>
+    ${campo('documento','CNPJ ou CPF','Só os números',docAceite,'inputmode="numeric"')}${campo('contato','Nome do responsável','',nomeAceite)}
+    ${campo('email','E-mail','voce@empresa.com.br','','type="email" autocomplete="email"')}${campo('whatsapp','WhatsApp','(11) 90000-0000','','type="tel"')}
+    <p class="priv">Seus dados ficam protegidos e são usados só para este projeto. <a href="privacidade.html" target="_blank" rel="noopener">Aviso de privacidade</a></p>
+    <p class="err" id="cerr" role="alert"></p><div class="acts"><button type="button" class="btn btn-primary" id="cok">Enviar dados</button></div></div>`;
+  document.getElementById('cok').onclick=async()=>{
+    const v=id=>document.getElementById('c_'+id).value.trim(),err=document.getElementById('cerr'),btn=document.getElementById('cok');
+    if(!docOk(v('documento'))){err.textContent='Confira o CPF ou CNPJ.';return}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email'))){err.textContent='Confira o e-mail.';return}
+    if(v('contato').length<2||v('whatsapp').replace(/\D/g,'').length<10){err.textContent='Preencha o nome do responsável e o WhatsApp com DDD.';return}
+    btn.disabled=true;btn.textContent='Enviando…';
+    try{const d={};['documento','contato','email','whatsapp'].forEach(k=>d[k]=v(k));
+      const r=await rpc('central_cadastro_cliente',{p_slug:slug,p:d});if(!r)throw new Error('x');pr=r;
+      avisar(`Dados cadastrais recebidos — ${pr.cliente_nome}`,`O cliente da proposta nº ${num()} enviou os dados da empresa. Eles já estão na ficha do cliente na central.`);
+      el.innerHTML=`<div class="box"><h2>Dados recebidos</h2><p class="obs" style="margin-top:0">Obrigado. Os dados da empresa já estão com a dade.</p></div>`}
+    catch(e){btn.disabled=false;btn.textContent='Enviar dados';err.textContent='Não foi possível enviar agora. Tente de novo em instantes.'}
+  };
+}
+function trocar(){
+  const{u}=tot();forma=pr.forma_pagamento;document.title='Trocar forma de pagamento | dade.design';
+  root.innerHTML=`<span class="eyebrow">Proposta nº ${num()}</span><h1>Trocar forma de pagamento</h1><p class="lede">A proposta continua aprovada. Escolha como prefere pagar o projeto.</p><div class="box"><h2>Forma de pagamento</h2><div role="radiogroup" aria-label="Forma de pagamento">${opts(u,forma)}</div></div><p class="err" id="err" role="alert"></p><div class="acts"><button type="button" class="btn btn-outline-dark" id="volta2">Voltar</button><button type="button" class="btn btn-primary" id="ok">Confirmar</button></div>`;
+  ligaOpts();document.getElementById('volta2').onclick=()=>aprovada(false);
+  document.getElementById('ok').onclick=async()=>{
+    if(forma===pr.forma_pagamento)return aprovada(false);
+    const btn=document.getElementById('ok');btn.disabled=true;btn.textContent='Salvando…';
+    try{const r=await rpc('central_trocar_forma',{p_slug:slug,p_forma:forma});if(!r)throw new Error('x');pr=r;
+      avisar(`Forma de pagamento trocada — ${pr.cliente_nome}`,`O cliente da proposta nº ${num()} (${pr.cliente_nome}) trocou a forma de pagamento para ${pr.forma_pagamento==='pix'?'Pix (50% agora, 50% na entrega)':'cartão de crédito'+(linkOk(pr.link_cartao)?'':' — FALTA ENVIAR O LINK DA INFINITEPAY')}.`);
+      aprovada(false)}
+    catch(e){btn.disabled=false;btn.textContent='Confirmar';document.getElementById('err').textContent='Não foi possível trocar agora. Se o pagamento já foi feito, fale com a dade pelo WhatsApp.'}
+  };
+}
+function aprovada(agora){
+  const{m,u}=tot(),f=pr.forma_pagamento;document.title='Proposta aprovada | dade.design';
+  let pay='';
+  if(f==='pix')pay=`<div class="box"><h2>Pagamento por Pix</h2><div class="key"><div><small>Valor da entrada (50%)</small><strong>${money(half(u))}</strong></div><button class="cp" data-c="${half(u).toFixed(2).replace('.',',')}">Copiar valor</button></div>
+    <div class="key"><div><small>Chave Pix (${esc(D.pix.tipo)})</small><strong>${esc(D.pix.chave)}</strong></div><button class="cp" data-c="${esc(D.pix.chave)}">Copiar chave</button></div>
+    <p class="obs">Depois de pagar, envie o comprovante pelo WhatsApp. Os outros <strong>${money(u-half(u))}</strong> ficam para a entrega do projeto.</p></div>`;
+  else if(f==='cartao')pay=`<div class="box"><h2>Pagamento no cartão de crédito</h2><div class="ln"><span>Valor total</span><span>${money(u)}</span></div>${linkOk(pr.link_cartao)?`<p class="obs">O pagamento é feito em um ambiente seguro da InfinitePay. Lá você escolhe em quantas vezes quer parcelar, em até 4x.</p><div class="acts"><a class="btn btn-primary" href="${esc(pr.link_cartao)}" target="_blank" rel="noopener">Ir para o pagamento</a></div>`:`<p class="obs">Você vai receber o link de pagamento pelo WhatsApp, com as opções de parcelamento em até 4x.</p>`}</div>`;
+  const msg=f==='pix'?`Olá! Aprovei a proposta da dade.design para ${pr.cliente_nome} e vou pagar a entrada por Pix.`:f==='cartao'?`Olá! Aprovei a proposta da dade.design para ${pr.cliente_nome} e vou pagar no cartão.`:`Olá! Aprovei a proposta da dade.design para ${pr.cliente_nome}.`;
+  root.innerHTML=`<span class="eyebrow">Proposta nº ${num()}</span><h1>Proposta aprovada</h1><p class="lede">${agora?'Obrigado pela confiança.':`Aprovada em ${dmy(pr.aprovada_em)}${pr.aprovada_por?` por ${esc(pr.aprovada_por)}`:''}.`} ${u>0?'Falta só o pagamento para o projeto começar.':'Vamos combinar o início pelo WhatsApp.'}</p>${pr.cadastro_ok?'':'<div id="cad"></div>'}${pay}${m>0?`<div class="box"><h2>Mensalidade</h2><p class="obs" style="margin-top:0">${mensalTxt(m)}</p></div>`:''}${pr.exige_contrato?`<div class="box"><h2>Contrato</h2><p class="obs" style="margin-top:0">Este projeto tem contrato. Você vai receber o documento para assinatura.</p></div>`:''}
+  <div class="acts">${u>0&&f&&!pr.pago?'<button type="button" class="btn btn-outline-dark" id="troca">Trocar forma de pagamento</button>':''}<a class="btn btn-outline-dark" href="${wpp(msg)}" target="_blank" rel="noopener">Falar com a dade no WhatsApp</a></div>`;
+  const tb=document.getElementById('troca');if(tb)tb.onclick=trocar;
+  if(!pr.cadastro_ok)cadastro();
+  root.querySelectorAll('.cp').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.c);const t=b.textContent;b.textContent='Copiado';setTimeout(()=>b.textContent=t,1600)}catch(e){}});
+}
+(async()=>{
+  const v=document.getElementById('volta');if(slug){v.href='proposta.html?slug='+encodeURIComponent(slug);v.hidden=false}
+  try{pr=slug?await rpc('central_proposta_publica',{p_slug:slug}):null}catch(e){return aviso('Não foi possível abrir','Confira a sua conexão e recarregue a página.')}
+  if(!pr)return aviso('Proposta não encontrada','Confira o link que você recebeu ou fale com a dade.design.');
+  const zap=`<div class="acts"><a class="btn btn-primary" href="${wpp('Olá! Quero falar sobre a proposta da dade.design para '+pr.cliente_nome+'.')}" target="_blank" rel="noopener">Falar com a dade no WhatsApp</a></div>`;
+  if(pr.aprovada_em)return aprovada(false);
+  if(pr.status==='ativa')return escolha();
+  if(pr.status==='fechada')return aviso('Esta proposta já foi fechada','O pagamento foi combinado direto com a dade.design. Qualquer dúvida, é só chamar.',zap);
+  aviso('Esta proposta não está mais disponível',`A proposta preparada para <strong>${esc(pr.cliente_nome)}</strong>${pr.data_expiracao?` era válida até ${dmy(pr.data_expiracao)}`:''}. Se ainda fizer sentido, é só chamar que eu preparo uma versão atualizada.`,zap);
+})();

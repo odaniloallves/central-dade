@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex"><meta name="theme-color" content="#171617">
+<title>Central dade · protótipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+__BRAND_CSS__
+/* ===== acréscimos da central (mesmos tokens do brand.css) ===== */
+.nav-group{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding:18px 14px 6px}
+.proto{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-full);padding:6px 14px;font-size:12px;color:var(--text-secondary);display:inline-flex;gap:8px;align-items:center;margin-bottom:22px}
+.proto::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.b-novo,.b-and,.b-ok,.b-muted,.b-warn{border:1px solid var(--border)}
+.b-novo::before,.b-and::before,.b-ok::before,.b-muted::before,.b-warn::before{content:"";width:6px;height:6px;border-radius:50%}
+.b-novo{color:var(--ink);border-color:var(--border-hover);font-weight:600}.b-novo::before{background:var(--lime)}
+.b-and{color:var(--text-primary)}.b-and::before{background:var(--ink)}
+.b-ok{background:var(--lime);color:var(--ink-900);border-color:var(--lime);font-weight:600}.b-ok::before{background:var(--ink-900)}
+.b-muted{color:var(--text-muted)}.b-muted::before{background:var(--text-muted)}
+.b-warn{color:var(--amber);border-color:rgba(232,176,75,.35)}.b-warn::before{background:var(--amber)}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+.pillf{height:38px;padding:0 16px;border-radius:var(--r-full);border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.pillf:hover{border-color:var(--border-hover);color:var(--ink)}
+.pillf.on{background:var(--ink);color:var(--bg-primary);border-color:var(--ink);font-weight:600}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:26px 28px}
+.panel h2{font-size:17px;margin-bottom:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--border-soft);font-size:14px;color:var(--text-primary)}
+.row:last-child{border-bottom:none;padding-bottom:0}
+.row small{display:block;color:var(--text-muted);font-size:12px;margin-top:2px}
+.crumb{font-size:13px;color:var(--text-muted);margin-bottom:14px}.crumb a{color:var(--text-secondary)}
+.linkrow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+.linkcard{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.linkcard b{display:block;color:var(--ink);font-size:14px;font-weight:600}
+.linkcard code{display:block;font-family:inherit;font-size:12px;color:var(--text-muted);margin:4px 0 14px;overflow-wrap:anywhere}
+.kv{padding:14px 0;border-bottom:1px solid var(--border-soft)}.kv:last-child{border-bottom:none}
+.kv dt{font-size:12px;color:var(--text-muted);margin-bottom:4px}.kv dd{font-size:14px;color:var(--text-primary);white-space:pre-line}
+.step-t{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin:22px 0 2px}.step-t:first-child{margin-top:0}
+.dobra{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:22px 26px;margin-bottom:12px}
+.dobra .tag{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.dobra .tag::before{content:"";width:20px;height:1px;background:var(--lime)}
+.dobra h3{font-size:19px;line-height:1.25;margin-bottom:8px}
+.dobra p{font-size:14px;color:var(--text-primary);margin-bottom:8px;max-width:68ch}
+.dobra .bt{display:inline-block;margin-top:6px;font-size:12px;color:var(--text-muted)}.dobra .bt b{color:var(--ink);font-weight:600}
+.dobra[contenteditable-on] p,.dobra [contenteditable]{outline:none;border-radius:6px}.dobra [contenteditable]:focus{box-shadow:0 0 0 3px var(--accent-glow)}
+.claude{background:var(--slate);border-radius:var(--radius);padding:22px 26px;color:#fff;margin-bottom:20px}
+.claude p{font-size:13px;color:rgba(255,255,255,.72);margin-bottom:12px}
+.claude .cmd{display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.25);border-radius:var(--radius-md);padding:12px 14px;font-size:14px;color:#fff;justify-content:space-between;flex-wrap:wrap}
+.mnav{display:none}
+.actions-cell{grid-template-columns:repeat(3,auto)}
+@media (max-width:1100px){.grid2{grid-template-columns:1fr}.linkrow{grid-template-columns:1fr}}
+@media (max-width:900px){
+  .mnav{display:flex;gap:6px;overflow-x:auto;margin:-4px -16px 20px;padding:0 16px 6px}
+  .mnav a{flex:none;padding:8px 14px;border:1px solid var(--border);border-radius:var(--r-full);font-size:13px;color:var(--text-secondary)}
+  .mnav a.active{background:var(--ink);color:var(--bg-primary);border-color:var(--ink);font-weight:600}
+  .page-header .btn{display:inline-flex}
+  .panel{padding:20px 18px}.dobra{padding:18px}
+}
+</style>
+<script>(function(){try{var t=localStorage.getItem('dade-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
+</head>
+<body>
+<div class="admin-wrapper">
+  <aside class="sidebar">
+    <div class="logo">
+      <img class="brand-logo lo-dark" src="__LOGO_COLOR__" alt="dade">
+      <img class="brand-logo lo-light" src="__LOGO_BLACK__" alt="dade">
+      <small>Central</small>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-footer">
+      <div class="admin-info"><div class="admin-avatar">D</div><div><div class="admin-name">Danilo Alves</div><div class="admin-email">Administrador</div></div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" style="flex:1" type="button">Sair</button>
+        <button class="btn btn-secondary btn-sm toggle-side" onclick="toggleTheme()" aria-label="Alternar tema" type="button">
+          <svg class="ico-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="ico-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <main class="main-content"><div class="mnav" id="mnav"></div><div id="view"></div></main>
+</div>
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal" id="modalBox"></div></div>
+<div id="toast" class="toast"></div>
+<script>
+/* ===== dados de exemplo (fictícios) ===== */
+const CLI=[
+ {id:1,nome:'Studio Forma Fitness',contato:'Marina Reis',email:'marina@studioforma.com.br',seg:'Fitness'},
+ {id:2,nome:'Vértice Incorporadora',contato:'Paulo Teles',email:'paulo@vertice.com.br',seg:'Imobiliário'},
+ {id:3,nome:'Casa Nobre Imóveis',contato:'Helena Prado',email:'helena@casanobre.com.br',seg:'Imobiliário'},
+ {id:4,nome:'Rota Log',contato:'Bruno Lima',email:'bruno@rotalog.com.br',seg:'Logística'},
+ {id:5,nome:'Lume Odontologia',contato:'Dra. Carla Moura',email:'carla@lumeodonto.com.br',seg:'Saúde'},
+];
+const TIPO={lp:'Landing page',site:'Site institucional',id:'Identidade visual'};
+const BRI=[
+ {id:1,cli:5,tipo:'lp',data:'06/10/2026',st:'novo',resp:[
+  ['A página',[['Tipo de página','Vendas de serviço ou produto'],['Ação do visitante','Chamar no WhatsApp para agendar avaliação'],['Destino do botão','WhatsApp'],['Origem do tráfego','Anúncios pagos, Google']]],
+  ['Público',[['Cliente ideal','Adultos de 30 a 55 anos que adiaram o tratamento por medo ou preço.'],['Problemas','1. Vergonha de sorrir (principal)\n2. Medo de dor\n3. Não saber quanto vai custar']]],
+  ['Produto e oferta',[['Em uma frase','Reabilitação do sorriso com planejamento digital.'],['Preço','Tem, mas não mostrar na página']]],
+  ['Objeções e linguagem',[['Não pode dizer','Promessa de resultado e antes e depois.'],['Regras da profissão','CRO']]]]},
+ {id:2,cli:1,tipo:'site',data:'03/10/2026',st:'and',resp:[['A empresa',[['Ramo e tempo de mercado','Estúdio de treino funcional, 6 anos.'],['Serviços','Funcional, pilates, avaliação física.']]]]},
+ {id:3,cli:1,tipo:'id',data:'02/10/2026',st:'ok',resp:[['A marca',[['Nome da marca','Studio Forma'],['Mensagem-chave','Constância e acolhimento.']]]]},
+ {id:4,cli:4,tipo:'lp',data:'28/09/2026',st:'ok',resp:[['A página',[['Tipo de página','Vendas de serviço ou produto'],['Ação do visitante','Pedir cotação pelo formulário']]]]},
+];
+const COP=[
+ {id:1,cli:4,bri:4,receita:'Página de vendas de serviço',v:2,st:'ok',data:'01/10/2026',dobras:[
+  ['01','Promessa central','Sua carga rastreada do embarque à entrega, sem ligar para ninguém.',['A Rota Log cuida do transporte e mostra cada etapa em um painel único.','Você acompanha tudo em tempo real e recebe aviso a cada mudança de status.'],'Pedir cotação'],
+  ['02','Problema','Você descobre o atraso quando o cliente reclama.',['A transportadora não responde. O motorista não atende.','O seu time gasta a manhã inteira procurando onde a carga está.'],'Pedir cotação'],
+  ['03','Autoridade','Uma operação feita por quem já esteve do seu lado do balcão.',['A Rota Log nasce dentro de uma distribuidora, para resolver o próprio problema de entrega.'],'Pedir cotação'],
+  ['04','Método','Como funciona em 4 passos.',['1. Cotação em até 2 horas úteis.','2. Coleta agendada.','3. Acompanhamento no painel.','4. Comprovante de entrega no mesmo dia.'],'Pedir cotação'],
+ ]},
+ {id:2,cli:1,bri:2,receita:'One page institucional',v:1,st:'and',data:'05/10/2026',dobras:[
+  ['01','Posicionamento','Treino que cabe na sua rotina e que você consegue manter.',['Turmas pequenas, professor por perto e um plano feito para você.'],'Agendar aula experimental'],
+  ['02','Serviços','Três formas de treinar no Studio Forma.',['Funcional, pilates e avaliação física.'],'Conhecer os planos'],
+ ]},
+];
+const SERV={identidade_visual:'Identidade Visual',site_institucional:'Site Institucional',landing_page:'Landing Page',apresentacao:'Apresentação Comercial',motion:'Motion Design',criativos_social:'Criativos para Redes Sociais',sustentacao:'Sustentação e Evolução'};
+const PRO=[
+ {id:1,cli:1,st:'ativa',criada:'20/09/2026',val:'20/10/2026',prazo:6,sv:[['identidade_visual','unico',6800],['site_institucional','unico',9500],['criativos_social','mensal',2400]]},
+ {id:4,cli:4,st:'ativa',criada:'10/09/2026',val:'30/10/2026',prazo:12,sv:[['criativos_social','mensal',4500],['motion','unico',2500]]},
+ {id:2,cli:2,st:'fechada',criada:'12/08/2026',val:'12/09/2026',prazo:6,sv:[['sustentacao','mensal',6000],['apresentacao','unico',12000]]},
+ {id:3,cli:3,st:'perdida',criada:'05/07/2026',val:'05/08/2026',prazo:null,sv:[['landing_page','unico',7000]]},
+];
+const CON=[
+ {id:1,cli:2,pro:2,ini:'15/08/2026',fim:'15/02/2027',st:'ok'},
+ {id:2,cli:1,pro:1,ini:'',fim:'',st:'and'},
+];
+const ST={novo:['b-novo','Novo'],and:['b-and','Em andamento'],ok:['b-ok','Concluído']};
+const STC={and:['b-and','Rascunho'],ok:['b-ok','Aprovada']};
+const STK={and:['b-and','Rascunho'],env:['b-warn','Enviado'],ok:['b-ok','Assinado']};
+const STP={ativa:['badge-ativa','Ativa'],expirada:['badge-expirada','Expirada'],fechada:['badge-fechada','Concluída'],perdida:['badge-perdida','Perdida']};
+
+/* ===== utilidades ===== */
+const $=id=>document.getElementById(id);
+const cli=id=>CLI.find(c=>c.id===id);
+const money=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2});
+const badge=([c,t])=>`<span class="badge ${c}">${t}</span>`;
+const tot=p=>{let m=0,u=0;p.sv.forEach(s=>s[1]==='mensal'?m+=s[2]:u+=s[2]);return{m,u}};
+const valor=p=>{const t=tot(p);return (t.m?money(t.m)+'<span style="color:var(--text-muted);font-size:12px">/mês</span>':'')+(t.m&&t.u?'<br>':'')+(t.u?money(t.u):'')};
+function toggleTheme(){const h=document.documentElement,n=(h.getAttribute('data-theme')||'dark')==='dark'?'light':'dark';h.setAttribute('data-theme',n);try{localStorage.setItem('dade-theme',n)}catch(e){}}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200)}
+function closeModal(){$('modal').classList.remove('open')}
+function modal(h){$('modalBox').innerHTML=h;$('modal').classList.add('open')}
+const head=(t,s,btn='')=>`<div class="page-header"><div><h1>${t}</h1><p>${s}</p></div>${btn}</div>`;
+const table=(cols,rows)=>`<div class="table-wrapper"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td data-label="${i===r.length-1?'':cols[i]}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const stat=(l,v,c='')=>`<div class="stat-card ${c}"><div class="stat-label">${l}</div><div class="stat-value">${v}</div></div>`;
+const ic=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${d}</svg>`;
+
+/* ===== menu ===== */
+const NAV=[
+ ['','Visão geral','<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'],
+ ['clientes','Clientes','<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'],
+ ['-','Trabalho'],
+ ['briefings','Briefings','<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'],
+ ['copys','Copys','<line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/>'],
+ ['propostas','Propostas','<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'],
+ ['contratos','Contratos','<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>'],
+ ['-','Sistema'],
+ ['numeros','Números','<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'],
+ ['lixeira','Lixeira','<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'],
+];
+function nav(cur){
+  const novos=BRI.filter(b=>b.st==='novo').length;
+  $('nav').innerHTML=NAV.map(([k,l,d])=>k==='-'?`<div class="nav-group">${l}</div>`:`<a href="#/${k}" class="${cur===k?'active':''}">${ic(d)}${l}${k==='briefings'&&novos?`<span class="nav-count">${novos}</span>`:''}</a>`).join('');
+  $('mnav').innerHTML=NAV.filter(n=>n[0]!=='-').map(([k,l])=>`<a href="#/${k}" class="${cur===k?'active':''}">${l}</a>`).join('');
+}
+
+/* ===== telas ===== */
+const V={};
+V['']=()=>{
+  const mrr=PRO.filter(p=>p.st==='ativa'||p.st==='fechada').reduce((a,p)=>a+tot(p).m,0);
+  return head('Visão geral','O que entrou, o que está em andamento e o que depende de você.')+
+  `<div class="stats-block"><div class="stats-row">${stat('Receita mensal',money(mrr),'purple')+stat('Briefings novos',BRI.filter(b=>b.st==='novo').length,'green')+stat('Copys em rascunho',COP.filter(c=>c.st==='and').length,'yellow')+stat('Propostas ativas',PRO.filter(p=>p.st==='ativa').length,'yellow')+stat('Contratos a assinar',CON.filter(c=>c.st!=='ok').length,'red')}</div></div>
+  <div class="grid2"><div class="panel"><h2>Precisa de você</h2>
+   <div class="row"><div>Briefing novo de Lume Odontologia<small>Landing page · recebido hoje</small></div><a class="btn btn-solid btn-sm" href="#/briefing/1">Abrir</a></div>
+   <div class="row"><div>Copy do Studio Forma Fitness em rascunho<small>Site institucional · versão 1</small></div><a class="btn btn-secondary btn-sm" href="#/copy/2">Revisar</a></div>
+   <div class="row"><div>Proposta do Studio Forma Fitness vence em 14 dias<small>Válida até 20/10/2026</small></div><a class="btn btn-secondary btn-sm" href="#/propostas">Ver</a></div>
+   <div class="row"><div>Contrato do Studio Forma Fitness em rascunho<small>Gerado a partir da proposta nº 0001</small></div><a class="btn btn-secondary btn-sm" href="#/contratos">Ver</a></div>
+  </div><div class="panel"><h2>Últimas entradas</h2>
+   ${BRI.map(b=>`<div class="row"><div>${cli(b.cli).nome}<small>${TIPO[b.tipo]} · ${b.data}</small></div>${badge(ST[b.st])}</div>`).join('')}
+  </div></div>`};
+
+V.clientes=()=>head('Clientes','Tudo o que cada cliente tem na dade, em um lugar só.','<button class="btn btn-primary" onclick="toast(\'Abre o cadastro de cliente\')">Novo cliente</button>')+
+  table(['Cliente','Contato','Briefings','Copys','Proposta','Contrato',''],CLI.map(c=>{
+    const p=PRO.find(x=>x.cli===c.id),k=CON.find(x=>x.cli===c.id);
+    return [`<strong>${c.nome}</strong><br><span style="color:var(--text-muted);font-size:12px">${c.seg}</span>`,c.contato,BRI.filter(b=>b.cli===c.id).length||'—',COP.filter(x=>x.cli===c.id).length||'—',p?badge(STP[p.st]):'—',k?badge(STK[k.st]):'—',`<div class="actions-cell"><a class="btn btn-solid btn-sm" href="#/cliente/${c.id}">Abrir</a></div>`]}));
+
+V.cliente=id=>{const c=cli(+id);const sec=(t,rows,empty)=>`<div class="panel" style="margin-bottom:16px"><h2>${t}</h2>${rows.length?rows.join(''):`<p style="font-size:14px;color:var(--text-muted)">${empty}</p>`}</div>`;
+  return `<div class="crumb"><a href="#/clientes">Clientes</a> / ${c.nome}</div>`+head(c.nome,`${c.contato} · ${c.email} · ${c.seg}`,'<button class="btn btn-secondary" onclick="toast(\'Abre a edição do cliente\')">Editar</button>')+
+  sec('Briefings',BRI.filter(b=>b.cli===c.id).map(b=>`<div class="row"><div>${TIPO[b.tipo]}<small>Recebido em ${b.data}</small></div><span style="display:flex;gap:10px;align-items:center">${badge(ST[b.st])}<a class="btn btn-secondary btn-sm" href="#/briefing/${b.id}">Abrir</a></span></div>`),'Nenhum briefing recebido.')+
+  sec('Copys',COP.filter(x=>x.cli===c.id).map(x=>`<div class="row"><div>${x.receita}<small>Versão ${x.v} · ${x.data}</small></div><span style="display:flex;gap:10px;align-items:center">${badge(STC[x.st])}<a class="btn btn-secondary btn-sm" href="#/copy/${x.id}">Abrir</a></span></div>`),'Nenhuma copy gerada.')+
+  sec('Propostas',PRO.filter(p=>p.cli===c.id).map(p=>`<div class="row"><div>Proposta nº ${String(p.id).padStart(4,'0')}<small>${p.sv.map(s=>SERV[s[0]]).join(', ')}</small></div>${badge(STP[p.st])}</div>`),'Nenhuma proposta enviada.')+
+  sec('Contratos',CON.filter(k=>k.cli===c.id).map(k=>`<div class="row"><div>Contrato da proposta nº ${String(k.pro).padStart(4,'0')}<small>${k.ini?`Vigência de ${k.ini} a ${k.fim}`:'Sem data de início'}</small></div>${badge(STK[k.st])}</div>`),'Nenhum contrato gerado.')};
+
+let fTipo='';
+V.briefings=()=>head('Briefings','Tudo o que os clientes preencheram nos três formulários.')+
+  `<div class="linkrow">${Object.entries(TIPO).map(([k,t])=>`<div class="linkcard"><b>Formulário de ${t.toLowerCase()}</b><code>central.dadedesign.com.br/briefing/${k==='id'?'identidade':k}</code><button class="btn btn-secondary btn-sm" onclick="toast('Link copiado')">Copiar link</button></div>`).join('')}</div>
+  <div class="pills">${[['','Todos'],...Object.entries(TIPO)].map(([k,t])=>`<button class="pillf ${fTipo===k?'on':''}" onclick="fTipo='${k}';route()">${t}</button>`).join('')}</div>`+
+  table(['Cliente','Tipo','Recebido','Status',''],BRI.filter(b=>!fTipo||b.tipo===fTipo).map(b=>[`<strong>${cli(b.cli).nome}</strong>`,TIPO[b.tipo],b.data,badge(ST[b.st]),`<div class="actions-cell"><a class="btn btn-solid btn-sm" href="#/briefing/${b.id}">Abrir</a><button class="btn btn-secondary btn-sm" onclick="toast('Baixa o PDF do briefing')">PDF</button><button class="btn btn-danger btn-sm" onclick="toast('Envia para a lixeira')">Excluir</button></div>`]));
+
+V.briefing=id=>{const b=BRI.find(x=>x.id===+id),c=cli(b.cli),cp=COP.find(x=>x.bri===b.id);
+  return `<div class="crumb"><a href="#/briefings">Briefings</a> / ${c.nome}</div>`+head(`Briefing de ${TIPO[b.tipo].toLowerCase()}`,`${c.nome} · recebido em ${b.data}`,`<span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary" onclick="toast('Baixa o PDF do briefing')">Baixar PDF</button><button class="btn btn-primary" onclick="novaProposta('${c.nome}')">Criar proposta</button></span>`)+
+  (b.tipo==='id'?'':cp?`<div class="claude"><p>A copy deste briefing já foi gerada.</p><a class="btn btn-primary btn-sm" href="#/copy/${cp.id}">Abrir copy</a></div>`
+   :`<div class="claude"><p>Para gerar a copy, peça no projeto do Claude. Ela aparece aqui e na área de Copys assim que ficar pronta.</p><div class="cmd"><span>gera a copy do briefing de ${c.nome}</span><button class="btn btn-primary btn-sm" onclick="toast('Pedido copiado')">Copiar pedido</button></div></div>`)+
+  `<div class="panel">${b.resp.map(([et,its])=>`<div class="step-t">${et}</div><dl>${its.map(([q,a])=>`<div class="kv"><dt>${q}</dt><dd>${a}</dd></div>`).join('')}</dl>`).join('')}</div>`};
+
+V.copys=()=>head('Copys','As copies geradas a partir dos briefings, por cliente.')+
+  table(['Cliente','Tipo de página','Versão','Atualizada','Status',''],COP.map(c=>[`<strong>${cli(c.cli).nome}</strong>`,c.receita,'v'+c.v,c.data,badge(STC[c.st]),`<div class="actions-cell"><a class="btn btn-solid btn-sm" href="#/copy/${c.id}">Abrir</a><button class="btn btn-secondary btn-sm" onclick="toast('Baixa o PDF da copy')">PDF</button></div>`]));
+
+V.copy=id=>{const c=COP.find(x=>x.id===+id),k=cli(c.cli);
+  return `<div class="crumb"><a href="#/copys">Copys</a> / ${k.nome}</div>`+head(`Copy de ${k.nome}`,`${c.receita} · versão ${c.v} · ${STC[c.st][1].toLowerCase()}`,`<span style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary" href="#/briefing/${c.bri}">Ver briefing</a><button class="btn btn-secondary" onclick="toast('Baixa o PDF da copy')">Baixar PDF</button>${c.st==='ok'?'':'<button class="btn btn-primary" onclick="toast(\'Copy marcada como aprovada\')">Aprovar</button>'}</span>`)+
+  `<p style="font-size:13px;color:var(--text-muted);margin:-18px 0 18px">Clique em qualquer texto para editar.</p>`+
+  c.dobras.map(([n,obj,h,ps,bt])=>`<div class="dobra"><div class="tag">Dobra ${n} · ${obj}</div><h3 contenteditable>${h}</h3>${ps.map(p=>`<p contenteditable>${p}</p>`).join('')}<span class="bt">Botão: <b contenteditable>${bt}</b></span></div>`).join('')};
+
+V.propostas=()=>{const s=st=>PRO.filter(p=>!st||p.st===st),sum=st=>s(st).reduce((a,p)=>a+tot(p).m+tot(p).u,0);
+  return head('Propostas','Acompanhe tudo o que foi enviado e o que já fechou.','<button class="btn btn-primary" onclick="novaProposta()">Nova proposta</button>')+
+  `<div class="stats-block"><div class="stats-row">${stat('Total gerado',money(sum()))+stat('Valor ativo',money(sum('ativa')),'yellow')+stat('Valor concluído',money(sum('fechada')),'green')+stat('Valor perdido',money(sum('perdida')),'muted')+stat('Propostas',PRO.length)}</div></div>`+
+  table(['Cliente','Serviços','Valor','Datas','Status','Ações'],PRO.map(p=>[`<strong>${cli(p.cli).nome}</strong>`,p.sv.map(x=>`<span class="badge badge-serv">${SERV[x[0]]}</span>`).join(''),valor(p),`<span class="dt"><span class="k">Criada</span> ${p.criada}</span><span class="dt"><span class="k">Válida até</span> ${p.val}</span>`,badge(STP[p.st]),
+   `<div class="actions-cell"><button class="btn btn-solid btn-sm" onclick="toast('Abre a página pública da proposta')">Ver</button><button class="btn btn-secondary btn-sm" onclick="toast('Link copiado')">Copiar</button><button class="btn btn-secondary btn-sm" onclick="toast('Abre a edição')">Editar</button>${p.st==='fechada'?`<button class="btn btn-sm btn-fechar" onclick="novoContrato(${p.id})">Gerar contrato</button>`:p.st==='ativa'?`<button class="btn btn-sm btn-fechar" onclick="toast('Marca como concluída')">Fechar</button><button class="btn btn-sm btn-ghost" onclick="toast('Marca como perdida')">Perder</button>`:''}</div>`]).map((r,i)=>(r[3]=`<span class="td-datas">${r[3]}</span>`,r)))};
+
+V.contratos=()=>head('Contratos','Gerados a partir das propostas fechadas, com o seu modelo.','<button class="btn btn-primary" onclick="novoContrato()">Novo contrato</button>')+
+  table(['Cliente','Origem','Valor','Vigência','Status',''],CON.map(k=>{const p=PRO.find(x=>x.id===k.pro);return [`<strong>${cli(k.cli).nome}</strong>`,`Proposta nº ${String(k.pro).padStart(4,'0')}`,valor(p),k.ini?`${k.ini} a ${k.fim}`:'A definir',badge(STK[k.st]),`<div class="actions-cell"><button class="btn btn-solid btn-sm" onclick="toast('Abre o contrato para revisão')">Abrir</button><button class="btn btn-secondary btn-sm" onclick="toast('Baixa o contrato em PDF')">PDF</button>${k.st==='ok'?'':'<button class="btn btn-sm btn-fechar" onclick="toast(\'Marca como assinado\')">Assinado</button>'}</div>`]}));
+
+V.numeros=()=>{const all=PRO.reduce((a,p)=>a+tot(p).m+tot(p).u,0),by={};PRO.forEach(p=>p.sv.forEach(s=>by[s[0]]=(by[s[0]]||0)+s[2]));const mx=Math.max(...Object.values(by));
+  return head('Números','Visão geral de desempenho.')+`<div class="stats-block"><div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">${stat('Receita mensal',money(12900),'purple')+stat('Total gerado',money(all))+stat('Ticket médio',money(all/PRO.length),'yellow')+stat('Conversão','50%','green')}</div></div>
+  <div class="panel"><h2>Valor por serviço</h2>${Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="color:var(--text-primary);font-weight:600">${SERV[k]}</span><span style="color:var(--text-primary);font-weight:700">${money(v)}</span></div><div style="height:8px;background:var(--surface);border-radius:20px;overflow:hidden"><div style="height:100%;width:${v/mx*100}%;background:var(--accent);border-radius:20px"></div></div></div>`).join('')}</div>`};
+V.lixeira=()=>head('Lixeira','Briefings, copies, propostas e contratos excluídos ficam aqui até você apagar de vez.')+'<div class="table-wrapper"><div class="empty-state"><p>A lixeira está vazia.</p></div></div>';
+
+/* ===== modais ===== */
+const mhead=(t,s)=>`<div class="modal-head"><div><h3>${t}</h3><p>${s}</p></div><button class="modal-close" onclick="closeModal()" type="button" aria-label="Fechar">${ic('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>').replace('<svg','<svg width="16" height="16"')}</button></div>`;
+function novaProposta(nome=''){modal(mhead('Nova proposta','Escolha o cliente, os serviços e os valores.')+`<div class="modal-body">
+  <div class="form-group"><label>Cliente</label><select>${CLI.map(c=>`<option ${c.nome===nome?'selected':''}>${c.nome}</option>`).join('')}</select></div>
+  <label class="group-label">Serviços</label>
+  <div class="svc-row" style="grid-template-columns:1.35fr 1.1fr .95fr"><div class="form-group"><label>Serviço</label><select>${Object.values(SERV).map(s=>`<option>${s}</option>`).join('')}</select></div><div class="form-group"><label>Cobrança</label><select><option>Valor único</option><option>Mensal</option></select></div><div class="form-group"><label>Valor (R$)</label><input placeholder="10.000,00"></div></div>
+  <button type="button" class="btn btn-secondary btn-sm" style="margin-bottom:18px">+ Adicionar serviço</button>
+  <div class="form-row"><div class="form-group"><label>Prazo do contrato (meses)</label><input type="number" placeholder="Opcional, só recorrente"></div><div class="form-group"><label>Validade da proposta</label><input type="date" value="2026-10-13"></div></div>
+  <div class="form-group"><label>Condição de pagamento</label><select><option>50% na aprovação + 50% na entrega</option><option>À vista no fechamento (com desconto)</option><option>Parcelado em 2x</option><option>Personalizada…</option></select></div>
+ </div><div class="modal-foot"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="closeModal();toast('Proposta criada')">Criar proposta</button></div>`)}
+function novoContrato(pid){const ps=PRO.filter(p=>p.st==='fechada');modal(mhead('Novo contrato','Os dados vêm da proposta fechada. Você só completa o que falta.')+`<div class="modal-body">
+  <div class="form-group"><label>Proposta de origem</label><select>${ps.map(p=>`<option ${p.id===pid?'selected':''}>nº ${String(p.id).padStart(4,'0')} · ${cli(p.cli).nome}</option>`).join('')}</select></div>
+  <div class="form-row"><div class="form-group"><label>Razão social do cliente</label><input placeholder="Nome que vai no contrato"></div><div class="form-group"><label>CNPJ ou CPF</label><input placeholder="00.000.000/0000-00"></div></div>
+  <div class="form-group"><label>Representante legal</label><input placeholder="Quem assina pelo cliente"></div>
+  <div class="form-row"><div class="form-group"><label>Início</label><input type="date"></div><div class="form-group"><label>Término</label><input type="date"></div></div>
+  <div class="form-group"><label>Cláusulas adicionais</label><textarea placeholder="Opcional. O restante vem do seu modelo de contrato."></textarea></div>
+ </div><div class="modal-foot"><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="closeModal();toast('Contrato gerado como rascunho')">Gerar contrato</button></div>`)}
+
+/* ===== rotas ===== */
+function route(){const [k='',id]=location.hash.replace(/^#\/?/,'').split('/');const f=V[k]||V[''];
+  const menu={cliente:'clientes',briefing:'briefings',copy:'copys'}[k]||(V[k]?k:'');nav(menu);
+  $('view').innerHTML='<div class="proto">Protótipo com dados de exemplo. Nada aqui é salvo.</div>'+f(id);window.scrollTo(0,0)}
+addEventListener('hashchange',route);document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});route();
+</script>
+</body></html>
