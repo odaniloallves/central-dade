@@ -2,3 +2,4 @@ site/
 __pycache__/
 *.png
 !origem/**/*.png
+check_*.js
