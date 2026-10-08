@@ -427,6 +427,41 @@ td[data-label="Serviços"]{min-width:150px}
 .qtd input:focus{outline:none;border-color:var(--lime)}
 .fin-tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:var(--surface);color:var(--text-secondary);margin-left:6px;vertical-align:middle}
 .row>strong,.row .hbtns>strong{white-space:nowrap}
+.cv{position:relative;margin:4px -8px 26px;padding:6px 0 0;overflow:hidden}
+.cv::before{content:"";position:absolute;left:50%;top:44%;width:620px;height:360px;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(193,253,66,.10),transparent);pointer-events:none}
+.cv-stage{position:relative;height:430px;perspective:1500px;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none;cursor:grab}
+.cv-stage.drag{cursor:grabbing}
+.cv-card{position:absolute;left:50%;top:10px;width:340px;height:400px;margin-left:-170px;display:flex;flex-direction:column;padding:24px 24px 22px;background:var(--bg-card);border:1px solid var(--border);border-radius:26px;box-shadow:0 30px 60px -30px rgba(0,0,0,.55);transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s,filter .4s;will-change:transform}
+.cv-stage.drag .cv-card{transition:none}
+.cv-card.on{border-color:rgba(193,253,66,.35)}
+.cv-top{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary);font-weight:600}
+.cv-top svg{width:18px;height:18px;color:var(--lime);flex:none}
+.cv-top .m{margin-left:auto;font-weight:500;color:var(--text-muted);font-size:12px}
+.cv-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px;min-height:0;padding:10px 0}
+.cv-big{font-size:58px;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--text-primary)}
+.cv-card.on .cv-big{color:var(--lime)}
+[data-theme="light"] .cv-card.on .cv-big{color:var(--text-primary)}
+.cv-big.money{font-size:38px}
+.cv-sub{font-size:14px;color:var(--text-secondary);line-height:1.45}
+.cv-list{list-style:none;display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.cv-list li{font-size:13px;color:var(--text-secondary);line-height:1.4}
+.cv-list li>b,.cv-list li>a{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cv-card[data-cv=news] .cv-body{justify-content:flex-start;padding-top:18px}
+.cv-card[data-cv=news] .cv-list{gap:13px}
+.cv-list li b{color:var(--text-primary);font-weight:600}
+.cv-list a{color:var(--text-primary)}
+.cv-list a:hover{color:var(--lime)}
+.cv-list small{display:block;font-size:11px;color:var(--text-muted);margin-top:2px}
+.cv-kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--text-secondary);padding:7px 0;border-top:1px solid var(--border-soft)}
+.cv-kv b{color:var(--text-primary);font-weight:600;white-space:nowrap}
+.cv-card .prog{margin:8px 0 2px}
+.cv-cta{align-self:flex-start}
+.cv-dots{display:flex;justify-content:center;gap:8px;margin-top:6px}
+.cv-dots button{width:8px;height:8px;border-radius:50%;border:0;padding:0;background:var(--border);cursor:pointer;transition:all .2s}
+.cv-dots button.on{width:26px;border-radius:8px;background:var(--lime)}
+.cv-arrows{position:absolute;inset:auto 0 50% 0;display:flex;justify-content:space-between;pointer-events:none;padding:0 18px;z-index:200}
+.cv-arrows button{pointer-events:auto;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);cursor:pointer;font-size:18px}
+@media (max-width:700px){.cv-stage{height:400px}.cv-card{width:292px;margin-left:-146px;height:372px;padding:20px}.cv-big{font-size:50px}.cv-arrows{display:none}}
 .imp-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .imp-form .form-group{margin:0;flex:1 1 160px}
 @media (max-width:600px){
@@ -693,16 +728,100 @@ V[''] = () => {
     ...novos.map(x => `<div class="row"><div>Briefing novo de ${esc(briNome(x))}<small>${TIPO[x.tipo] || ''} · recebido em ${fdate(x.created_at)}</small></div><a class="btn btn-solid btn-sm" href="#/briefing/${x.id}">Abrir</a></div>`),
     ...rasc.map(x => `<div class="row"><div>Copy de ${esc(copNome(x))} em rascunho<small>${esc(x.receita)} · versão ${x.versao}</small></div><a class="btn btn-secondary btn-sm" href="#/copy/${x.id}">Revisar</a></div>`),
   ];
-  const ph = pendHoje(), okh = feitasEm(hoje());
-  const agendaBox = `<div class="panel" style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px"><h2 style="margin:0">Agenda de hoje</h2><a class="btn btn-secondary btn-sm" href="#/agenda">Abrir agenda</a></div>
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">${ph.length ? `${ph.length} ${ph.length === 1 ? 'tarefa em aberto' : 'tarefas em aberto'}${okh.length ? ` · ${okh.length} ${okh.length === 1 ? 'concluída' : 'concluídas'}` : ''}` : okh.length ? 'Tudo feito por hoje.' : 'Nenhuma tarefa para hoje.'}</div>
-    <form class="ag-add" data-s="tar-add" style="margin:12px 0 6px"><input id="tarNova" maxlength="500" placeholder="Adicionar tarefa para hoje" autocomplete="off"><button class="btn btn-primary" type="submit">Adicionar</button></form>
-    ${ph.slice(0, 8).map(x => tarefaHtml(x, true)).join('')}${ph.length > 8 ? `<p class="hint">E mais ${ph.length - 8} na agenda.</p>` : ''}</div>`;
-  return head(`${new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'}`, `${diaLongo(hoje()).replace(/^./, c => c.toUpperCase())}. O que entrou, o que está em andamento e o que depende de você.`) + agendaBox +
-    `<div class="stats-block"><div class="stats-row">${stat('Receita recorrente', money(recorrente(mesAtual())), 'purple') + stat('Briefings novos', novos.length, 'green') + stat('Copys em rascunho', rasc.length, 'yellow') + stat('Propostas ativas', ativas.length, 'yellow') + stat('Clientes ativos', live(S.cli).filter(c => !c.arquivado_em).length)}</div></div>
-    <div class="grid2"><div class="panel"><h2>Precisa de você</h2>${pend.join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada pendente.</p>'}</div>
+  const hr = new Date().getHours();
+  return head(hr < 12 ? 'Bom dia' : hr < 18 ? 'Boa tarde' : 'Boa noite', `${diaLongo(hoje()).replace(/^./, c => c.toUpperCase())}. Arraste os cards para ver o resumo da dade.`) +
+    carrossel({ pend, novos, rasc, ativas, dias }) +
+    `<div class="grid2"><div class="panel"><h2>Precisa de você</h2>${pend.join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada pendente.</p>'}</div>
     <div class="panel"><h2>Últimas entradas</h2>${b.slice(0, 6).map(x => `<div class="row"><div><a href="#/briefing/${x.id}">${esc(briNome(x))}</a><small>${TIPO[x.tipo] || ''} · ${fdate(x.created_at)}</small></div>${badge(STB[x.status] || STB.novo)}</div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum briefing recebido ainda.</p>'}</div></div>`;
 };
+
+/* ---- carrossel do início ---- */
+let cvPos = 0;
+const CVI = {
+  tar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 15 11 17 15 13"/>',
+  pend:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+  fin:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  pro:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+  cli:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
+  bri:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  pre:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  news:'<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>',
+};
+function carrossel({ pend, novos, rasc, ativas, dias }) {
+  const ph = pendHoje(), okh = feitasEm(hoje()), tt = ph.length + okh.length, m = mesAtual();
+  const ent = entradasDo(m).reduce((a, e) => a + e.v, 0), comp = mesAdd(m, -1);
+  const aRec = S.pla.filter(pl => planoAtivo(pl, comp) && !(fechDe(pl, comp) || {}).pago_em).reduce((a, pl) => a + fechValor(pl, comp), 0);
+  const cl = ativos(), planos = S.pla.filter(pl => planoAtivo(pl, m)), novosMes = cl.filter(x => (x.created_at || '').slice(0, 7) === m).length;
+  const vence = ativas.filter(x => x.data_expiracao && dias(x) <= 7);
+  const pv = live(S.pre), aguard = pv.filter(v => v.status === 'aguardando'), ajus = pv.filter(v => v.status === 'ajustes');
+  const kv = (l, v) => `<div class="cv-kv"><span>${l}</span><b>${v}</b></div>`;
+  const tira = h => String(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const cards = [
+    ['tar', 'Tarefas de hoje', tt ? `${okh.length} de ${tt}` : '', `<div class="cv-big">${ph.length}</div><div class="cv-sub">${ph.length ? (ph.length === 1 ? 'tarefa em aberto' : 'tarefas em aberto') : tt ? 'Tudo feito por hoje.' : 'Nenhuma tarefa para hoje.'}</div>${tt ? `<div class="prog"><div style="width:${okh.length / tt * 100}%"></div></div>` : ''}${ph[0] ? `<ul class="cv-list"><li>Próxima: <b>${esc(ph[0].texto)}</b></li></ul>` : ''}`, '#/agenda', 'Abrir agenda'],
+    ['pend', 'Precisa de você', '', `<div class="cv-big">${pend.length}</div><div class="cv-sub">${pend.length ? (pend.length === 1 ? 'coisa esperando você' : 'coisas esperando você') : 'Nada pendente. Bom sinal.'}</div>${pend.length ? `<ul class="cv-list">${pend.slice(0, 3).map(r => `<li>${esc(tira(r).replace(/ (Abrir|Ver|Revisar|Marcar como emitida|Marcar como enviado)$/, ''))}</li>`).join('')}</ul>` : ''}`, '#/', ''],
+    ['fin', 'Financeiro do mês', mesCurto(m), `<div class="cv-big money">${money(ent)}</div><div class="cv-sub">entrou em ${mesCurto(m)}</div><div style="margin-top:10px">${kv('A receber de mensalidades', money(aRec))}${kv('Receita recorrente', money(recorrente(m)))}${impostoDe(ent) != null ? kv('Imposto do mês', money(impostoDe(ent))) : ''}</div>`, '#/financeiro', 'Abrir financeiro'],
+    ['pro', 'Propostas ativas', '', `<div class="cv-big">${ativas.length}</div><div class="cv-sub">${money(soma(ativas))} em negociação</div><div style="margin-top:10px">${kv('Vencem em até 7 dias', vence.length)}${kv('Fechadas este mês', live(S.pro).filter(x => x.status === 'fechada' && ((x.aprovada_em || x.updated_at || '').slice(0, 7) === m)).length)}</div>`, '#/propostas', 'Ver propostas'],
+    ['cli', 'Clientes ativos', '', `<div class="cv-big">${cl.length}</div><div class="cv-sub">${planos.length} ${planos.length === 1 ? 'com plano mensal' : 'com plano mensal'}</div><div style="margin-top:10px">${kv('Novos este mês', novosMes)}${kv('Receita recorrente', money(recorrente(m)))}</div>`, '#/clientes', 'Ver clientes'],
+    ['bri', 'Briefings e copys', '', `<div class="cv-big">${novos.length}</div><div class="cv-sub">${novos.length === 1 ? 'briefing novo' : 'briefings novos'}</div><div style="margin-top:10px">${kv('Copys em rascunho', rasc.length)}${kv('Briefings no total', live(S.bri).length)}</div>`, '#/briefings', 'Abrir briefings'],
+    ['pre', 'Prévias', '', `<div class="cv-big">${aguard.length}</div><div class="cv-sub">${aguard.length === 1 ? 'aguardando o cliente' : 'aguardando os clientes'}</div><div style="margin-top:10px">${kv('Com ajustes pedidos', ajus.length)}${kv('Aprovadas', pv.filter(v => v.status === 'aprovada').length)}</div>`, '#/previas', 'Abrir prévias'],
+    ['news', 'Notícias do dia', 'design e marketing', `<div id="cvNews">${newsHtml()}</div>`, '', ''],
+  ];
+  setTimeout(carregaNoticias, 0); setTimeout(cvRender, 0);
+  return `<div class="cv"><div class="cv-stage" id="cvStage" tabindex="0" role="region" aria-roledescription="carrossel" aria-label="Resumo da dade. Use as setas para navegar.">
+    ${cards.map(([k, t, mt, body, href, cta], i) => `<div class="cv-card" data-cv="${k}" data-i="${i}"><div class="cv-top">${ic(CVI[k])}<span>${t}</span>${mt ? `<span class="m">${esc(mt)}</span>` : ''}</div><div class="cv-body">${body}</div>${cta ? `<a class="btn btn-secondary btn-sm cv-cta" href="${href}">${cta}</a>` : ''}</div>`).join('')}
+    <div class="cv-arrows"><button type="button" data-a="cv-go" data-v="-1" aria-label="Card anterior">‹</button><button type="button" data-a="cv-go" data-v="1" aria-label="Próximo card">›</button></div></div>
+    <div class="cv-dots">${cards.map((c, i) => `<button type="button" data-a="cv-to" data-v="${i}" aria-label="${c[1]}"></button>`).join('')}</div></div>`;
+}
+function cvRender() {
+  const st = $('cvStage'); if (!st) return;
+  const cards = [...st.querySelectorAll('.cv-card')], n = cards.length, w = cards[0].offsetWidth, mob = innerWidth <= 700;
+  cards.forEach((el, i) => {
+    let o = ((i - cvPos) % n + n) % n; if (o > n / 2) o -= n;
+    const a = Math.abs(o), x = o * w * (mob ? .74 : .78), ry = Math.max(-60, Math.min(60, -o * 38)), sc = 1 - Math.min(a, 3) * .07;
+    el.style.transform = `translateX(${x}px) translateZ(${-Math.min(a, 3) * 110}px) rotateY(${ry}deg) scale(${sc})`;
+    el.style.opacity = a > 2.6 ? 0 : 1; el.style.zIndex = 100 - Math.round(a * 10); el.style.filter = `brightness(${1 - Math.min(a, 1.5) * .3})`;
+    el.style.pointerEvents = a > 2.6 ? 'none' : ''; el.classList.toggle('on', a < .5); el.setAttribute('aria-hidden', a >= .5);
+  });
+  const on = ((Math.round(cvPos) % n) + n) % n;
+  document.querySelectorAll('.cv-dots button').forEach((b, i) => b.classList.toggle('on', i === on));
+}
+const cvGo = v => { cvPos = Math.round(cvPos) + v; cvRender(); };
+(() => {
+  let d = null;
+  document.addEventListener('pointerdown', e => { const st = e.target.closest('#cvStage'); if (!st || e.button || e.target.closest('.cv-arrows')) return; d = { x:e.clientX, p:cvPos, w:st.querySelector('.cv-card').offsetWidth * .78, moved:false, id:e.pointerId, st }; });
+  document.addEventListener('pointermove', e => { if (!d || e.pointerId !== d.id) return; const dx = e.clientX - d.x; if (!d.moved && Math.abs(dx) > 6) { d.moved = true; d.st.classList.add('drag'); try { d.st.setPointerCapture(d.id); } catch (er) {} } if (d.moved) { cvPos = d.p - dx / d.w; cvRender(); } });
+  const fim = e => { if (!d || e.pointerId !== d.id) return; const st = d.st, moved = d.moved; st.classList.remove('drag');
+    if (moved) { const v = cvPos - d.p; cvPos = Math.abs(v) < .15 ? d.p : (v > 0 ? Math.ceil(cvPos - .35) : Math.floor(cvPos + .35)); cvRender(); st.dataset.moved = '1'; setTimeout(() => delete st.dataset.moved, 0); }
+    else { const c = e.target.closest && e.target.closest('.cv-card'); if (c && !c.classList.contains('on') && !e.target.closest('a,button,input')) { const n = st.querySelectorAll('.cv-card').length; let o = ((+c.dataset.i - cvPos) % n + n) % n; if (o > n / 2) o -= n; cvGo(Math.round(o)); } }
+    d = null; };
+  document.addEventListener('pointerup', fim); document.addEventListener('pointercancel', fim);
+  document.addEventListener('click', e => { const st = e.target.closest('#cvStage'); if (st && st.dataset.moved) { e.preventDefault(); e.stopPropagation(); } if (st && e.target.closest('.cv-card:not(.on) a')) { e.preventDefault(); } }, true);
+  document.addEventListener('keydown', e => { if (!e.target.closest || !e.target.closest('#cvStage')) return; if (e.key === 'ArrowRight') { e.preventDefault(); cvGo(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); cvGo(-1); } });
+  let wAcc = 0, wT = 0;
+  document.addEventListener('wheel', e => { if (!e.target.closest || !e.target.closest('#cvStage') || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; e.preventDefault(); wAcc += e.deltaX; const now = Date.now(); if (Math.abs(wAcc) > 60 && now - wT > 350) { cvGo(wAcc > 0 ? 1 : -1); wAcc = 0; wT = now; } }, { passive:false });
+  addEventListener('resize', () => cvRender());
+})();
+
+/* ---- notícias (função central-noticias no Supabase, guardadas por 30 min) ---- */
+let NEWS = null, newsBusy = false;
+try { const c = JSON.parse(localStorage.getItem('dade-news') || 'null'); if (c && Date.now() - c.em < 30 * 60 * 1000) NEWS = c.d; } catch (e) {}
+const quando = d => { const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 60 ? `há ${Math.max(1, m)} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : fdate(d); };
+function newsHtml() {
+  if (NEWS === null) return '<p class="cv-sub">Carregando as notícias…</p>';
+  if (!NEWS.length) return '<p class="cv-sub">Não foi possível carregar as notícias agora. Tente de novo mais tarde.</p>';
+  return `<ul class="cv-list">${NEWS.slice(0, 5).map(n => `<li><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.titulo)}</a><small>${esc(n.fonte)} · ${quando(n.data)}</small></li>`).join('')}</ul>`;
+}
+async function carregaNoticias() {
+  if (NEWS !== null || newsBusy) return; newsBusy = true;
+  try {
+    if (sess.expires_at - 60 < Date.now() / 1000) await authCall('refresh_token', { refresh_token:sess.refresh_token });
+    const r = await fetch(`${SB}/functions/v1/central-noticias`, { headers:{ apikey:KEY, Authorization:'Bearer ' + sess.access_token } });
+    const j = r.ok ? await r.json() : { itens:[] };
+    NEWS = (j.itens || []).filter(n => /^https?:\/\//.test(n.link));
+    if (NEWS.length) try { localStorage.setItem('dade-news', JSON.stringify({ em:Date.now(), d:NEWS })); } catch (e) {}
+  } catch (e) { NEWS = []; }
+  newsBusy = false; const box = $('cvNews'); if (box) box.innerHTML = newsHtml();
+}
 
 let fArq = false;
 const ativos = () => live(S.cli).filter(c => !c.arquivado_em);
@@ -1076,6 +1195,8 @@ const A = {
   'ag-dia'(d) { const h = hoje(); agDia = d.v === '0' ? null : addDias(agDia || h, +d.v); if (agDia === h) agDia = null; route(); },
   async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); await patch('tar', d.id, { data:addDias(base, 1) }); await sync('Passou para o dia seguinte'); },
   async 'tar-del'(d) { await db(`central_tarefas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); await sync('Tarefa excluída'); },
+  'cv-go'(d) { cvGo(+d.v); },
+  'cv-to'(d) { const n = document.querySelectorAll('#cvStage .cv-card').length, cur = ((Math.round(cvPos) % n) + n) % n; let o = +d.v - cur; if (o > n / 2) o -= n; if (o < -n / 2) o += n; cvGo(o); },
   'pla-form'(d) { planoForm(d.id && S.pla.find(x => x.id === d.id), d.cli); },
   'pla-enc-ask'(d) { const pl = S.pla.find(x => x.id === d.id);
     modal(mhead('Encerrar plano', `${esc(planoNome(pl))} · ${esc(pl.descricao)}`) + `<form data-s="pla-enc" data-id="${pl.id}"><div class="modal-body"><div class="form-group"><label for="pl_fim">Último mês trabalhado</label><input id="pl_fim" type="month" value="${mesAtual()}" min="${pl.inicio}"></div><p class="hint" style="margin:0">Esse mês ainda é cobrado normalmente. O plano entra no churn dele e sai da receita recorrente a partir do mês seguinte.</p></div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-danger" type="submit">Encerrar plano</button></div></form>`); },
