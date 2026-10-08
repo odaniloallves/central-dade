@@ -59,7 +59,7 @@ async def main():
         ctx=await b.new_context(viewport={'width':1280,'height':900}); await setup(ctx)
         pg=await ctx.new_page(); pg.on('pageerror',lambda e:errs.append(str(e))); pg.on('console',lambda m:errs.append(m.text) if m.type=='error' and 'ERR_' not in m.text and '400' not in m.text else None)
         await pg.add_init_script("window.print=()=>{window.__printed=(window.__printed||0)+1}")
-        await pg.goto(BASE+'index.html'); await pg.fill('#lEmail','dan@dade.design'); await pg.fill('#lPass','x'); await pg.click('#lBtn'); await pg.wait_for_selector('.stats-row')
+        await pg.goto(BASE+'index.html'); await pg.fill('#lEmail','dan@dade.design'); await pg.fill('#lPass','x'); await pg.click('#lBtn'); await pg.wait_for_selector('#cvStage')
         # condições
         await pg.goto(BASE+'index.html#/condicoes'); await pg.wait_for_selector('#condList'); print('condições carregadas:',await pg.locator('.cond-item').count()); await pg.screenshot(path='k_cond.png',full_page=True)
         await pg.click('[data-a=cond-add]'); it=pg.locator('.cond-item').last; await it.locator('[name=titulo]').fill('Textos'); await it.locator('[name=texto]').fill('Criação de textos não inclusa.'); await pg.click('[data-a=cond-save]'); await pg.wait_for_timeout(400); print('condições salvas:',[c['titulo'] for c in DB['central_config'][0]['valor']['itens']])

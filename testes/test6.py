@@ -35,7 +35,7 @@ async def main():
             await pg.evaluate("""()=>{STEPS[step].fields.forEach(f=>{if(!f.req)return;if(f.type==='repeat'){data[f.id]=[Object.fromEntries(f.fields.filter(x=>x.type!=='flag').map(x=>[x.id,'Teste']))]}else if(f.type==='cards'){data[f.id]=f.options[0][0]}else if(!data[f.id]){data[f.id]='Teste'}});save();render()}"""); await pg.click('#next')
         await pg.wait_for_selector('.done'); bri=DB['central_briefings'][0]; print('gravado:',bri['documento'],bri.get('razao_social'),bri.get('endereco'))
         # central: cliente a partir do briefing
-        await pg.goto(BASE+'index.html'); await pg.fill('#lEmail','d@d.com'); await pg.fill('#lPass','x'); await pg.click('#lBtn'); await pg.wait_for_selector('.stats-row')
+        await pg.goto(BASE+'index.html'); await pg.fill('#lEmail','d@d.com'); await pg.fill('#lPass','x'); await pg.click('#lBtn'); await pg.wait_for_selector('#cvStage')
         await pg.goto(BASE+'index.html#/briefing/'+bri['id']); await pg.wait_for_selector('[data-a=bri-newcli]'); await pg.click('[data-a=bri-newcli]'); await pg.wait_for_selector('[data-a=bri-unlink]')
         c=DB['central_clientes'][-1]; print('cliente criado:',c['nome'],c['documento'],c['contato'],c['email'],c['whatsapp'])
         # vincular a cliente existente completa os vazios

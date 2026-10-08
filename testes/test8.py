@@ -18,7 +18,7 @@ async def main():
         b = await pw.chromium.launch(); errs = []
         ctx = await b.new_context(viewport={'width': 1280, 'height': 900}); await T5.setup(ctx)
         pg = await ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto(BASE + 'index.html'); await pg.fill('#lEmail', 'd@d.com'); await pg.fill('#lPass', 'x'); await pg.click('#lBtn'); await pg.wait_for_selector('.stats-row')
+        await pg.goto(BASE + 'index.html'); await pg.fill('#lEmail', 'd@d.com'); await pg.fill('#lPass', 'x'); await pg.click('#lBtn'); await pg.wait_for_selector('#cvStage')
         print('plano automático:', [(p['descricao'], p['valor_base'], p['inicio'], p['proposta_id']) for p in DB['central_planos']])
         print('menu:', [(await x.inner_text()).replace('\n', ' ') for x in await pg.locator('#nav a').all()])
         # plano de pacote pela ficha
@@ -30,7 +30,7 @@ async def main():
         pl = DB['central_planos'][-1]; print('plano pacote:', pl['descricao'], pl['valor_base'], pl['qtd_inclusa'], pl['valor_extra'], pl['inicio'], pl['dia_cobranca'])
         print('ficha:', (await pg.locator('.panel', has_text='Plano mensal').inner_text()).replace('\n', ' | ')[:300])
         await pg.screenshot(path='q_ficha.png', full_page=True)
-        await pg.goto(BASE + 'index.html'); await pg.wait_for_selector('.stats-row')
+        await pg.goto(BASE + 'index.html'); await pg.wait_for_selector('#cvStage')
         print('início pendências:', [t.replace('\n', ' ') for t in await pg.locator('.panel', has_text='Precisa de você').locator('.row').all_inner_texts()])
         print('badge financeiro:', await pg.locator('#nav a[href="#/financeiro"]').inner_text())
         # financeiro
@@ -57,9 +57,9 @@ async def main():
         # pagamento da proposta mensal aponta para o financeiro
         await pg.goto(BASE + 'index.html#/propostas'); await pg.click('[data-a=pay-open][data-id="10"]'); print('modal mensal:', (await pg.inner_text('#modalBox')).replace('\n', ' ')[-120:])
         m = await b.new_context(viewport={'width': 375, 'height': 740}); await T5.setup(m); mp = await m.new_page()
-        await mp.goto(BASE + 'index.html'); await mp.fill('#lEmail', 'a@a.com'); await mp.fill('#lPass', 'x'); await mp.click('#lBtn'); await mp.wait_for_selector('.stats-row')
+        await mp.goto(BASE + 'index.html'); await mp.fill('#lEmail', 'a@a.com'); await mp.fill('#lPass', 'x'); await mp.click('#lBtn'); await mp.wait_for_selector('#cvStage')
         for k in ['financeiro', 'cliente/cl1', '']:
             await mp.goto(BASE + 'index.html#/' + k); await mp.wait_for_timeout(250); print('mobile', k, 'overflow', await mp.evaluate('document.documentElement.scrollWidth>innerWidth'))
         await mp.goto(BASE + 'index.html#/financeiro'); await mp.wait_for_timeout(250); await mp.screenshot(path='q_m_fin.png', full_page=True)
         print('ERRS', errs); await b.close()
-asyncio.run(main())
+if __name__ == "__main__": asyncio.run(main())
