@@ -590,7 +590,7 @@ const addDias = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.get
 const hoje = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 async function loadAll() {
   await db(`central_propostas?status=eq.ativa&deleted_at=is.null&data_expiracao=lt.${hoje()}`, 'PATCH', { status:'expirada' });
-  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met] = await Promise.all([
+  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu] = await Promise.all([
     db('central_clientes?select=*&order=nome.asc'),
     db('central_briefings?select=*&order=created_at.desc'),
     db('central_copys?select=*&order=updated_at.desc'),
@@ -602,9 +602,10 @@ async function loadAll() {
     db('central_fechamentos?select=*&order=mes.desc'),
     db('central_config?select=*&chave=eq.imposto'),
     db('central_config?select=*&chave=eq.metas'),
+    db('central_entradas?select=*&order=recebido_em.desc'),
   ]);
   S.pla = pla; S.fec = fec; S.imp = (imp[0] && imp[0].valor) || { tipo:'percentual', valor:null };
-  S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0];
+  S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0]; S.avu = avu;
   S.tar = tar;
   S.pre = pre; S.cond = (cfg[0] && cfg[0].valor && cfg[0].valor.itens) || [];
   pro.forEach(p => (p.servicos = p.servicos || []).sort((a, b) => a.ordem - b.ordem || a.id - b.id));
@@ -620,7 +621,7 @@ async function planosDasPropostas() {
     S.pla = [...S.pla, ...(novos || [])];
   } catch (e) { console.error(e); }
 }
-const TAB = { pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
+const TAB = { avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
 const patch = (k, id, body) => db(`${TAB[k]}?id=eq.${encodeURIComponent(id)}`, 'PATCH', body);
 
 /* ============ DOMÍNIO ============ */
@@ -725,6 +726,7 @@ V[''] = () => {
   const pend = [
     ...live(S.pre).filter(v => v.status === 'ajustes').map(v => `<div class="row"><div>${esc(v.resposta_nome)} pediu ajustes na prévia de ${esc(preNome(v))}<small>${esc(v.titulo)} · rodada ${v.rodada}</small></div><a class="btn btn-solid btn-sm" href="#/previa/${v.id}">Abrir</a></div>`),
     ...p.flatMap(pendProp).map(([t, s, b]) => `<div class="row"><div>${t}<small>${s}</small></div>${b}</div>`),
+    ...(S.avu || []).filter(a => !a.nf_em).map(a => `<div class="row"><div>Emitir nota fiscal de ${esc(a.nome)}<small>Avulso · ${money(a.valor)}${a.descricao ? ' · ' + esc(a.descricao) : ''} · recebido em ${dmy(a.recebido_em)}</small></div><button class="btn btn-secondary btn-sm" data-a="avu-nf" data-id="${a.id}" type="button">Marcar como emitida</button></div>`),
     ...pendFin().map(({ pl, comp, tipo }) => `<div class="row"><div>${tipo === 'cobrar' ? `Cobrar mensalidade de ${esc(planoNome(pl))}` : `Emitir nota fiscal de ${esc(planoNome(pl))}`}<small>${money(fechValor(pl, comp))} · trabalho de ${mesCurto(comp)}${tipo === 'cobrar' ? ' · venceu dia ' + dmy(diaCobr(pl, mesAdd(comp, 1))) : ''}</small></div><a class="btn ${tipo === 'cobrar' ? 'btn-solid' : 'btn-secondary'} btn-sm" href="#/financeiro/${mesAdd(comp, 1)}">Abrir</a></div>`),
     ...ativas.filter(x => x.data_expiracao && dias(x) <= 7).map(x => `<div class="row"><div>Proposta de ${esc(x.cliente_nome)} ${dias(x) === 0 ? 'vence hoje' : `vence em ${dias(x)} ${dias(x) === 1 ? 'dia' : 'dias'}`}<small>Válida até ${dmy(x.data_expiracao)}</small></div><a class="btn btn-secondary btn-sm" href="#/propostas">Ver</a></div>`),
     ...novos.map(x => `<div class="row"><div>Briefing novo de ${esc(briNome(x))}<small>${TIPO[x.tipo] || ''} · recebido em ${fdate(x.created_at)}</small></div><a class="btn btn-solid btn-sm" href="#/briefing/${x.id}">Abrir</a></div>`),
@@ -874,6 +876,7 @@ function planoForm(pl, cid) {
 /* ---- tela do financeiro ---- */
 function entradasDo(m) {
   const out = [], dia = x => x ? new Date(x).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) : '';
+  (S.avu || []).forEach(a => { if (a.recebido_em.slice(0, 7) === m) out.push({ d:a.recebido_em, quem:a.nome, oque:`Avulso${a.descricao ? ' · ' + a.descricao : ''}${a.nf_em ? ' · nota emitida' : ''}`, v:+a.valor, avu:a.id }); });
   S.fec.forEach(f => { if (f.pago_em && f.pago_em.slice(0, 7) === m) { const pl = S.pla.find(x => x.id === f.plano_id); if (pl) out.push({ d:f.pago_em, quem:planoNome(pl), oque:`Mensalidade · trabalho de ${mesCurto(f.mes)}${f.qtd != null && pacote(pl) ? ` · ${f.qtd} itens` : ''}`, v:+f.valor }); } });
   live(S.pro).forEach(p => { const u = tot(p).u; if (!u) return; const e = dia(p.pago_entrada_em), fi = dia(p.pago_final_em);
     if (e.slice(0, 7) === m) out.push({ d:e, quem:p.cliente_nome, oque:p.forma_pagamento === 'pix' ? `Entrada de 50% · proposta nº ${numProp(p)}` : `Pagamento ${p.forma_pagamento === 'cartao' ? 'no cartão' : 'do projeto'} · proposta nº ${numProp(p)}`, v:p.forma_pagamento === 'pix' ? half(u) : u });
@@ -902,10 +905,10 @@ V.financeiro = arg => {
     <div class="stats-block"><div class="stats-row" ${g4}>${stat('Entrou no mês', money(rec), 'green') + stat('A receber de mensalidades', money(aReceber), 'yellow') + stat('Receita recorrente', money(recorrente(m)), 'purple') + stat('Imposto do mês', imp == null ? 'Definir' : money(imp), 'muted')}</div></div>
     ${(() => { const g = metaInfo(m), x = S.metas || {}, propria = x.meses && x.meses[m] != null;
       return `<div class="panel" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap"><h2 style="margin:0">Meta de ${mesCurto(m)}</h2>${g.meta != null ? `<span style="font-size:14px;color:var(--text-secondary)"><strong style="color:var(--text-primary)">${money(g.rec)}</strong> de ${money(g.meta)} · ${Math.round(g.pct)}%</span>` : ''}</div>
-      ${g.meta != null ? `<div class="prog" style="margin:14px 0 6px"><div style="width:${Math.min(100, g.pct)}%"></div></div><p class="hint" style="margin:0 0 14px">${g.falta ? `Faltam ${money(g.falta)}${g.resta && m === mesAtual() ? `, ${money(g.porDia)} por dia nos ${g.resta} ${g.resta === 1 ? 'dia que resta' : 'dias que restam'}` : ''}.` : `Meta batida, ${money(g.rec - g.meta)} acima.`} ${propria ? 'Meta definida só para este mês.' : 'Usando a meta padrão.'}</p>` : '<p class="hint" style="margin:8px 0 14px">Defina quanto quer faturar. A meta conta tudo o que entrou no mês: mensalidades e pagamentos de propostas.</p>'}
+      ${g.meta != null ? `<div class="prog" style="margin:14px 0 6px"><div style="width:${Math.min(100, g.pct)}%"></div></div><p class="hint" style="margin:0 0 14px">${g.falta ? `Faltam ${money(g.falta)}${g.resta && m === mesAtual() ? `, ${money(g.porDia)} por dia nos ${g.resta} ${g.resta === 1 ? 'dia que resta' : 'dias que restam'}` : ''}.` : `Meta batida, ${money(g.rec - g.meta)} acima.`} ${propria ? 'Meta definida só para este mês.' : 'Usando a meta padrão.'}</p>` : '<p class="hint" style="margin:8px 0 14px">Defina quanto quer faturar. A meta conta tudo o que entrou no mês: mensalidades, pagamentos de propostas e entradas avulsas.</p>'}
       <form class="imp-form" data-s="meta-save" data-m="${m}"><div class="form-group"><label for="meta_v">Meta de ${mesCurto(m)} (R$)</label><input id="meta_v" class="money" inputmode="numeric" placeholder="10.000,00" value="${g.meta != null ? fmtVal(g.meta) : ''}"></div><label class="ck" style="flex:1 1 220px;margin:0 0 14px"><input type="checkbox" id="meta_p" ${propria ? '' : 'checked'}>Usar também nos próximos meses</label><button class="btn btn-secondary" type="submit" style="height:52px">Salvar meta</button></form></div>`; })()}
     <div class="panel" style="margin-bottom:16px"><h2>Mensalidades a cobrar em ${mesCurto(m)}</h2><p class="hint" style="margin:-4px 0 8px">Trabalho feito em ${mesNome(comp)}. ${cobr.some(pacote) ? 'Nos pacotes, confirme a quantidade entregue e o valor se ajusta.' : ''}</p>${cobr.map(linha).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano mensal com cobrança neste mês.</p>'}</div>
-    <div class="grid2"><div class="panel"><h2>Entradas de ${mesCurto(m)}</h2>${ent.map(e => `<div class="row"><div>${esc(e.quem)}<small>${dmy(e.d)} · ${esc(e.oque)}</small></div><strong>${money(e.v)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada recebido neste mês ainda. As entradas aparecem quando você marca um pagamento como recebido.</p>'}${ent.length ? `<div class="row"><div><strong>Total</strong></div><strong>${money(rec)}</strong></div>` : ''}</div>
+    <div class="grid2"><div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap"><h2 style="margin:0">Entradas de ${mesCurto(m)}</h2><button class="btn btn-primary btn-sm" data-a="avu-form" data-m="${m}" type="button">+ Entrada avulsa</button></div>${ent.map(e => `<div class="row"><div>${esc(e.quem)}<small>${dmy(e.d)} · ${esc(e.oque)}</small>${e.avu ? `<span class="hbtns" style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-a="avu-form" data-id="${e.avu}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-a="avu-del-ask" data-id="${e.avu}" type="button">Excluir</button></span>` : ''}</div><strong>${money(e.v)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada recebido neste mês ainda. As entradas aparecem quando você marca um pagamento como recebido ou registra uma entrada avulsa.</p>'}${ent.length ? `<div class="row"><div><strong>Total</strong></div><strong>${money(rec)}</strong></div>` : ''}</div>
     <div class="panel"><h2>Imposto</h2><form class="imp-form" data-s="imp-save"><div class="form-group"><label for="imp_t">Como calcular</label><select id="imp_t"><option value="percentual" ${S.imp.tipo !== 'fixo' ? 'selected' : ''}>Percentual sobre o que entrou</option><option value="fixo" ${S.imp.tipo === 'fixo' ? 'selected' : ''}>Valor fixo por mês (MEI)</option></select></div><div class="form-group"><label for="imp_v">${S.imp.tipo === 'fixo' ? 'Valor (R$)' : 'Alíquota (%)'}</label><input id="imp_v" inputmode="decimal" placeholder="${S.imp.tipo === 'fixo' ? '80,90' : '6'}" value="${S.imp.valor == null ? '' : String(S.imp.valor).replace('.', ',')}"></div><button class="btn btn-secondary" type="submit" style="height:52px">Salvar</button></form>
       <p class="hint" style="margin-top:12px">${imp == null ? 'Defina a forma de cálculo para ver quanto separar por mês.' : `Separe ${money(imp)} de ${mesNome(m)}${S.imp.tipo === 'fixo' ? '.' : `, ${String(S.imp.valor).replace('.', ',')}% de ${money(rec)}.`}`} Confira a alíquota com a sua contabilidade.</p></div></div>
     <div class="grid2" style="margin-top:16px"><div class="panel"><h2>Planos ativos</h2>${ativos.map(pl => `<div class="row"><div><a href="#/cliente/${pl.cliente_id || ''}">${esc(planoNome(pl))}</a><small>${descPlano(pl)}</small></div><strong>${money(pl.valor_base)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano ativo. Crie na ficha do cliente.</p>'}</div>
@@ -1208,6 +1211,18 @@ const A = {
   'ag-dia'(d) { const h = hoje(); agDia = d.v === '0' ? null : addDias(agDia || h, +d.v); if (agDia === h) agDia = null; route(); },
   async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); await patch('tar', d.id, { data:addDias(base, 1) }); await sync('Passou para o dia seguinte'); },
   async 'tar-del'(d) { await db(`central_tarefas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); await sync('Tarefa excluída'); },
+  'avu-form'(d) {
+    const a = d.id ? S.avu.find(x => x.id === d.id) : { recebido_em:d.m && d.m !== mesAtual() ? d.m + '-01' : hoje() };
+    modal(mhead(d.id ? 'Editar entrada avulsa' : 'Entrada avulsa', 'Um trabalho pontual para alguém que não precisa virar cliente. Conta nas entradas, na meta e no imposto do mês.') + `<form data-s="avu-save" data-id="${d.id || ''}"><div class="modal-body">
+      <div class="form-row"><div class="form-group"><label for="a_nome">Quem pagou</label><input id="a_nome" maxlength="120" placeholder="Ex.: Juliana Souza" value="${esc(a.nome)}" required></div><div class="form-group"><label for="a_val">Valor (R$)</label><input id="a_val" class="money" inputmode="numeric" placeholder="350,00" value="${fmtVal(a.valor)}"></div></div>
+      <div class="form-group"><label for="a_desc">O que foi feito</label><input id="a_desc" maxlength="200" placeholder="Ex.: Convite de aniversário" value="${esc(a.descricao)}"></div>
+      <div class="form-row"><div class="form-group"><label for="a_dia">Recebido em</label><input id="a_dia" type="date" value="${a.recebido_em}"></div><div class="form-group"><label for="a_forma">Forma</label><select id="a_forma">${[['pix', 'Pix'], ['cartao', 'Cartão'], ['dinheiro', 'Dinheiro'], ['outro', 'Outra']].map(([k, l]) => `<option value="${k}" ${(a.forma || 'pix') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <label class="ck"><input type="checkbox" id="a_nf" ${a.nf_em ? 'checked' : ''}>Nota fiscal já emitida</label>
+    </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar entrada</button></div></form>`);
+  },
+  'avu-del-ask'(d) { const a = S.avu.find(x => x.id === d.id); modal(`<div class="modal-body" style="padding:32px;text-align:center"><h3 style="font-size:20px;margin-bottom:6px">Excluir entrada</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:22px">Excluir a entrada de <strong>${esc(a.nome)}</strong> de ${money(a.valor)}? Ela sai das entradas do mês.</p><div class="hbtns" style="justify-content:center"><button class="btn btn-danger" data-a="avu-del" data-id="${a.id}" type="button">Excluir</button><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button></div></div>`); },
+  async 'avu-del'(d) { await db(`central_entradas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); closeModal(); await sync('Entrada excluída'); },
+  async 'avu-nf'(d) { await patch('avu', d.id, { nf_em:hoje() }); await sync('Nota marcada como emitida'); },
   'cv-go'(d) { cvGo(+d.v); },
   'cv-to'(d) { const n = document.querySelectorAll('#cvStage .cv-card').length, cur = ((Math.round(cvPos) % n) + n) % n; let o = +d.v - cur; if (o > n / 2) o -= n; if (o < -n / 2) o += n; cvGo(o); },
   'pla-form'(d) { planoForm(d.id && S.pla.find(x => x.id === d.id), d.cli); },
@@ -1317,6 +1332,15 @@ const F = {
     closeModal(); await sync('Plano salvo');
   },
   async 'pla-enc'(form) { const m = $('pl_fim').value; if (!/^\d{4}-\d{2}$/.test(m)) return toast('Informe o último mês trabalhado.'); await patch('pla', form.dataset.id, { encerrado_em:fimMes(m) }); closeModal(); await sync('Plano encerrado'); },
+  async 'avu-save'(form) {
+    const nome = $('a_nome').value.trim(), valor = parseVal($('a_val').value), dia = $('a_dia').value, a = form.dataset.id && S.avu.find(x => x.id === form.dataset.id);
+    if (!nome || !(valor > 0)) return toast('Informe quem pagou e o valor.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return toast('Informe a data em que recebeu.');
+    const nf = $('a_nf').checked, body = { nome:nome.slice(0, 120), descricao:$('a_desc').value.trim().slice(0, 200) || null, valor, recebido_em:dia, forma:$('a_forma').value, nf_em:nf ? (a && a.nf_em) || hoje() : null };
+    if (a) await patch('avu', a.id, body); else await db('central_entradas', 'POST', body);
+    closeModal(); await sync('Entrada salva');
+    if (dia.slice(0, 7) !== mesAtual() && location.hash.startsWith('#/financeiro') && !location.hash.endsWith(dia.slice(0, 7))) location.hash = '#/financeiro/' + dia.slice(0, 7);
+  },
   async 'meta-save'(form) {
     const m = form.dataset.m, v = parseVal($('meta_v').value), padrao = $('meta_p').checked, x = JSON.parse(JSON.stringify(S.metas || { padrao:null, meses:{} }));
     x.meses = x.meses || {};
