@@ -3,3 +3,4 @@ __pycache__/
 *.png
 !origem/**/*.png
 check_*.js
+!testes/t_img*.png

@@ -49,6 +49,18 @@ __EXTRA_CSS__
 .tarefa.ok .tx{color:var(--text-muted);text-decoration:line-through}
 .tarefa .ac{display:flex;gap:6px;flex:none}
 .ag-add input{min-width:0}
+.fin-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.fin-nav strong{font-size:17px;min-width:180px}
+.fin-nav strong::first-letter{text-transform:uppercase}
+.fin-nav .btn{width:44px;padding:0}
+.fin-nav .btn.hj{width:auto;padding:0 18px}
+.qtd{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)}
+.qtd input{width:76px;height:40px;padding:0 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-family:inherit;font-size:15px;text-align:center}
+.qtd input:focus{outline:none;border-color:var(--lime)}
+.fin-tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:var(--surface);color:var(--text-secondary);margin-left:6px;vertical-align:middle}
+.row>strong,.row .hbtns>strong{white-space:nowrap}
+.imp-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.imp-form .form-group{margin:0;flex:1 1 160px}
 @media (max-width:600px){
 .ag-nav strong{min-width:0;flex:1 1 100%;order:-1}
 .ag-add{flex-direction:column}
@@ -170,12 +182,12 @@ async function db(path, method = 'GET', body) {
   const t = await r.text();
   return t ? JSON.parse(t) : null;
 }
-const S = { cli:[], bri:[], cop:[], pro:[], pre:[], cond:[], tar:[] };
+const S = { cli:[], bri:[], cop:[], pro:[], pre:[], cond:[], tar:[], pla:[], fec:[], imp:{ tipo:'percentual', valor:null } };
 const addDias = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
 const hoje = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 async function loadAll() {
   await db(`central_propostas?status=eq.ativa&deleted_at=is.null&data_expiracao=lt.${hoje()}`, 'PATCH', { status:'expirada' });
-  const [cli, bri, cop, pro, pre, cfg, tar] = await Promise.all([
+  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp] = await Promise.all([
     db('central_clientes?select=*&order=nome.asc'),
     db('central_briefings?select=*&order=created_at.desc'),
     db('central_copys?select=*&order=updated_at.desc'),
@@ -183,13 +195,27 @@ async function loadAll() {
     db('central_previas?select=*&order=created_at.desc'),
     db('central_config?select=*&chave=eq.condicoes'),
     db(`central_tarefas?select=*&or=(feita_em.is.null,data.gte.${addDias(hoje(), -45)})&order=data.asc,ordem.asc,created_at.asc`),
+    db('central_planos?select=*&order=created_at.asc'),
+    db('central_fechamentos?select=*&order=mes.desc'),
+    db('central_config?select=*&chave=eq.imposto'),
   ]);
+  S.pla = pla; S.fec = fec; S.imp = (imp[0] && imp[0].valor) || { tipo:'percentual', valor:null };
   S.tar = tar;
   S.pre = pre; S.cond = (cfg[0] && cfg[0].valor && cfg[0].valor.itens) || [];
   pro.forEach(p => (p.servicos = p.servicos || []).sort((a, b) => a.ordem - b.ordem || a.id - b.id));
   S.cli = cli; S.bri = bri; S.cop = cop; S.pro = pro;
+  await planosDasPropostas();
 }
-const TAB = { tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
+/* Proposta fechada com mensalidade vira um plano mensal, que o Financeiro acompanha mês a mês. */
+async function planosDasPropostas() {
+  const falta = live(S.pro).filter(p => p.status === 'fechada' && tot(p).m > 0 && !S.pla.some(x => String(x.proposta_id) === String(p.id)));
+  if (!falta.length) return;
+  try {
+    const novos = await db('central_planos', 'POST', falta.map(p => ({ proposta_id:p.id, cliente_id:p.cliente_id || null, cliente_nome:p.cliente_nome, descricao:p.servicos.filter(s => conta(s) && s.cobranca === 'mensal').map(s => servNome(s.servico)).join(' + ') || 'Plano mensal', valor_base:tot(p).m, dia_cobranca:p.dia_cobranca || 10, inicio:(p.aprovada_em ? new Date(p.aprovada_em).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) : hoje()).slice(0, 7) })));
+    S.pla = [...S.pla, ...(novos || [])];
+  } catch (e) { console.error(e); }
+}
+const TAB = { pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
 const patch = (k, id, body) => db(`${TAB[k]}?id=eq.${encodeURIComponent(id)}`, 'PATCH', body);
 
 /* ============ DOMÍNIO ============ */
@@ -220,11 +246,29 @@ const numProp = p => String(p.id).padStart(4, '0');
 const half = v => Math.round(v * 50) / 100;
 const FORMA = { pix:'Pix', cartao:'Cartão de crédito' };
 const mesAtual = () => hoje().slice(0, 7);
-/* Mensalidade: trabalha e depois recebe. O primeiro lembrete só vale a partir do mês seguinte ao da aprovação. */
-function mensalDevida(p) {
-  if (p.status !== 'fechada' || !tot(p).m || !p.dia_cobranca) return false;
-  const ini = (p.aprovada_em || p.created_at || '').slice(0, 7), h = hoje(), ult = new Date(+h.slice(0, 4), +h.slice(5, 7), 0).getDate();
-  return mesAtual() > ini && +h.slice(8) >= Math.min(p.dia_cobranca, ult) && p.nf_mensal_ultima !== mesAtual();
+/* ---- financeiro ----
+   Plano mensal: trabalha no mês (competência) e recebe no dia de cobrança do mês seguinte.
+   Pacote com quantidade: valor base cobre a quantidade inclusa; cada item a mais custa o valor extra. */
+const mesAdd = (m, n) => { const d = new Date(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const mesNome = m => new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 15).toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+const mesCurto = m => new Date(+m.slice(0, 4), +m.slice(5, 7) - 1, 15).toLocaleDateString('pt-BR', { month:'long' });
+const fimMes = m => { const d = new Date(+m.slice(0, 4), +m.slice(5, 7), 0); return m + '-' + String(d.getDate()).padStart(2, '0'); };
+const diaCobr = (pl, m) => { const ult = +fimMes(m).slice(8); return m + '-' + String(Math.min(pl.dia_cobranca || 10, ult)).padStart(2, '0'); };
+const planoNome = pl => { const c = pl.cliente_id && cli(pl.cliente_id); return c ? c.nome : (pl.cliente_nome || 'Sem cliente'); };
+const planoAtivo = (pl, m) => pl.inicio <= m && (!pl.encerrado_em || m <= pl.encerrado_em.slice(0, 7));
+const pacote = pl => !!pl.qtd_inclusa;
+const valorPlano = (pl, qtd) => +pl.valor_base + (pacote(pl) ? Math.max(0, (qtd ?? pl.qtd_inclusa) - pl.qtd_inclusa) * (+pl.valor_extra || 0) : 0);
+const fechDe = (pl, m) => S.fec.find(f => f.plano_id === pl.id && f.mes === m);
+const fechValor = (pl, m) => { const f = fechDe(pl, m); return f ? +f.valor : valorPlano(pl); };
+const descPlano = (pl, sem) => `${sem ? '' : esc(pl.descricao) + ' · '}${money(pl.valor_base)}${pacote(pl) ? ` por ${pl.qtd_inclusa}, ${money(pl.valor_extra || 0)} cada extra` : ''} · cobrança dia ${pl.dia_cobranca}`;
+const recorrente = m => S.pla.filter(pl => planoAtivo(pl, m)).reduce((a, pl) => a + +pl.valor_base, 0);
+/* Mensalidades vencidas e não recebidas (até 3 meses para trás), e notas de mensalidades já recebidas. */
+function pendFin() {
+  const h = hoje(), out = [];
+  S.pla.forEach(pl => { for (let i = 1; i <= 3; i++) { const comp = mesAdd(mesAtual(), -i), f = fechDe(pl, comp);
+    if (!planoAtivo(pl, comp) || diaCobr(pl, mesAdd(comp, 1)) > h) continue;
+    if (!f || !f.pago_em) out.push({ pl, comp, tipo:'cobrar' }); else if (!f.nf_em) out.push({ pl, comp, tipo:'nf' }); } });
+  return out;
 }
 function pendProp(p) {
   const { m, u } = tot(p), out = [];
@@ -236,7 +280,6 @@ function pendProp(p) {
   }
   if (u > 0 && p.pago_entrada_em && !p.nf_emitida_em) out.push([`Emitir nota fiscal de ${esc(p.cliente_nome)}`, `Valor total do projeto · ${money(u)}`, btn('pay-set', 'Marcar como emitida', 'nf_emitida_em')]);
   if (p.exige_contrato && !p.contrato_enviado_em) out.push([`Enviar contrato para ${esc(p.cliente_nome)}`, `Proposta nº ${numProp(p)} exige contrato`, btn('pay-set', 'Marcar como enviado', 'contrato_enviado_em')]);
-  if (mensalDevida(p)) out.push([`Cobrar mensalidade e emitir nota de ${esc(p.cliente_nome)}`, `${money(m)} por Pix · dia ${p.dia_cobranca}`, btn('pay-mes', 'Marcar como feito')]);
   return out;
 }
 
@@ -250,6 +293,7 @@ const NAV = [
   ['previas', 'Prévias', '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'],
   ['-', 'Comercial'],
   ['propostas', 'Propostas', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'],
+  ['financeiro', 'Financeiro', '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
   ['-', 'Sistema'],
   ['lixeira', 'Lixeira', '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'],
 ];
@@ -261,7 +305,7 @@ const ABAS = {
 const abas = cur => { const g = GRUPO[cur] || cur, f = ABAS[g]; if (!f || !['briefings', 'copys', 'propostas', 'contratos', 'numeros', 'condicoes'].includes(cur)) return '';
   return `<div class="tabs" role="tablist">${f().map(([k, l, n]) => `<a href="#/${k}" class="tab ${cur === k ? 'on' : ''}" role="tab" aria-selected="${cur === k}">${l}${n ? `<span class="nav-count">${n}</span>` : ''}</a>`).join('')}</div>`; };
 function nav(cur) {
-  const n = { agenda: pendHoje().length, briefings: live(S.bri).filter(b => b.status === 'novo').length + live(S.cop).filter(c => c.status === 'rascunho').length, previas: live(S.pre).filter(v => v.status === 'ajustes').length, lixeira: [...S.cli, ...S.bri, ...S.cop, ...S.pro, ...S.pre].filter(x => x.deleted_at).length };
+  const n = { financeiro: pendFin().filter(x => x.tipo === 'cobrar').length, agenda: pendHoje().length, briefings: live(S.bri).filter(b => b.status === 'novo').length + live(S.cop).filter(c => c.status === 'rascunho').length, previas: live(S.pre).filter(v => v.status === 'ajustes').length, lixeira: [...S.cli, ...S.bri, ...S.cop, ...S.pro, ...S.pre].filter(x => x.deleted_at).length };
   $('nav').innerHTML = NAV.map(([k, l, d]) => k === '-' ? `<div class="nav-group">${l}</div>` : `<a href="#/${k}" class="${cur === k ? 'active' : ''}">${ic(d)}${l}${n[k] ? `<span class="nav-count">${n[k]}</span>` : ''}</a>`).join('');
   $('mnav').innerHTML = NAV.filter(x => x[0] !== '-').map(([k, l]) => `<a href="#/${k}" class="${cur === k ? 'active' : ''}">${l}</a>`).join('');
 }
@@ -276,6 +320,7 @@ V[''] = () => {
   const pend = [
     ...live(S.pre).filter(v => v.status === 'ajustes').map(v => `<div class="row"><div>${esc(v.resposta_nome)} pediu ajustes na prévia de ${esc(preNome(v))}<small>${esc(v.titulo)} · rodada ${v.rodada}</small></div><a class="btn btn-solid btn-sm" href="#/previa/${v.id}">Abrir</a></div>`),
     ...p.flatMap(pendProp).map(([t, s, b]) => `<div class="row"><div>${t}<small>${s}</small></div>${b}</div>`),
+    ...pendFin().map(({ pl, comp, tipo }) => `<div class="row"><div>${tipo === 'cobrar' ? `Cobrar mensalidade de ${esc(planoNome(pl))}` : `Emitir nota fiscal de ${esc(planoNome(pl))}`}<small>${money(fechValor(pl, comp))} · trabalho de ${mesCurto(comp)}${tipo === 'cobrar' ? ' · venceu dia ' + dmy(diaCobr(pl, mesAdd(comp, 1))) : ''}</small></div><a class="btn ${tipo === 'cobrar' ? 'btn-solid' : 'btn-secondary'} btn-sm" href="#/financeiro/${mesAdd(comp, 1)}">Abrir</a></div>`),
     ...ativas.filter(x => x.data_expiracao && dias(x) <= 7).map(x => `<div class="row"><div>Proposta de ${esc(x.cliente_nome)} ${dias(x) === 0 ? 'vence hoje' : `vence em ${dias(x)} ${dias(x) === 1 ? 'dia' : 'dias'}`}<small>Válida até ${dmy(x.data_expiracao)}</small></div><a class="btn btn-secondary btn-sm" href="#/propostas">Ver</a></div>`),
     ...novos.map(x => `<div class="row"><div>Briefing novo de ${esc(briNome(x))}<small>${TIPO[x.tipo] || ''} · recebido em ${fdate(x.created_at)}</small></div><a class="btn btn-solid btn-sm" href="#/briefing/${x.id}">Abrir</a></div>`),
     ...rasc.map(x => `<div class="row"><div>Copy de ${esc(copNome(x))} em rascunho<small>${esc(x.receita)} · versão ${x.versao}</small></div><a class="btn btn-secondary btn-sm" href="#/copy/${x.id}">Revisar</a></div>`),
@@ -286,7 +331,7 @@ V[''] = () => {
     <form class="ag-add" data-s="tar-add" style="margin:12px 0 6px"><input id="tarNova" maxlength="500" placeholder="Adicionar tarefa para hoje" autocomplete="off"><button class="btn btn-primary" type="submit">Adicionar</button></form>
     ${ph.slice(0, 8).map(x => tarefaHtml(x, true)).join('')}${ph.length > 8 ? `<p class="hint">E mais ${ph.length - 8} na agenda.</p>` : ''}</div>`;
   return head(`${new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite'}`, `${diaLongo(hoje()).replace(/^./, c => c.toUpperCase())}. O que entrou, o que está em andamento e o que depende de você.`) + agendaBox +
-    `<div class="stats-block"><div class="stats-row">${stat('Receita mensal', money(soma(p.filter(x => x.status === 'ativa' || x.status === 'fechada'), 'm')), 'purple') + stat('Briefings novos', novos.length, 'green') + stat('Copys em rascunho', rasc.length, 'yellow') + stat('Propostas ativas', ativas.length, 'yellow') + stat('Clientes ativos', live(S.cli).filter(c => !c.arquivado_em).length)}</div></div>
+    `<div class="stats-block"><div class="stats-row">${stat('Receita recorrente', money(recorrente(mesAtual())), 'purple') + stat('Briefings novos', novos.length, 'green') + stat('Copys em rascunho', rasc.length, 'yellow') + stat('Propostas ativas', ativas.length, 'yellow') + stat('Clientes ativos', live(S.cli).filter(c => !c.arquivado_em).length)}</div></div>
     <div class="grid2"><div class="panel"><h2>Precisa de você</h2>${pend.join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada pendente.</p>'}</div>
     <div class="panel"><h2>Últimas entradas</h2>${b.slice(0, 6).map(x => `<div class="row"><div><a href="#/briefing/${x.id}">${esc(briNome(x))}</a><small>${TIPO[x.tipo] || ''} · ${fdate(x.created_at)}</small></div>${badge(STB[x.status] || STB.novo)}</div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum briefing recebido ainda.</p>'}</div></div>`;
 };
@@ -308,11 +353,63 @@ V.cliente = id => {
   return `<div class="crumb"><a href="#/clientes">Clientes</a> / ${esc(c.nome)}</div>` +
     head(esc(c.nome), c.arquivado_em ? `Cliente arquivado em ${fdate(c.arquivado_em)}` : (esc(c.segmento) || 'Cliente ativo'), `<span class="hbtns"><button class="btn btn-secondary" data-a="cli-form" data-id="${c.id}" type="button">Editar</button><button class="btn btn-secondary" data-a="cli-arq" data-id="${c.id}" type="button">${c.arquivado_em ? 'Reativar' : 'Arquivar'}</button><button class="btn btn-danger" data-a="trash" data-k="cli" data-id="${c.id}" type="button">Excluir</button></span>`) +
     `<div class="panel" style="margin-bottom:16px"><h2>Dados do cliente</h2><dl class="dados">${[['Razão social', c.razao_social], ['CNPJ ou CPF', c.documento], ['Responsável', c.contato], ['E-mail', c.email], ['WhatsApp', c.whatsapp], ['Telefone', c.telefone], ['Endereço', c.endereco], ['Segmento', c.segmento], ['Observações', c.observacoes]].map(([q, a]) => `<div class="kv"><dt>${q}</dt><dd>${esc(a) || '<span style="color:var(--text-muted)">Não informado</span>'}</dd></div>`).join('')}</dl></div>` +
+    planosBox(c) +
     sec('Briefings', live(S.bri).filter(b => b.cliente_id === c.id).map(b => `<div class="row"><div>${TIPO[b.tipo] || ''}<small>Recebido em ${fdate(b.created_at)}</small></div><span class="hbtns">${badge(STB[b.status] || STB.novo)}<a class="btn btn-secondary btn-sm" href="#/briefing/${b.id}">Abrir</a></span></div>`), 'Nenhum briefing vinculado.') +
     sec('Copys', live(S.cop).filter(x => x.cliente_id === c.id).map(x => `<div class="row"><div>${esc(x.receita)}<small>Versão ${x.versao} · ${fdate(x.updated_at)}</small></div><span class="hbtns">${badge(STC[x.status] || STC.rascunho)}<a class="btn btn-secondary btn-sm" href="#/copy/${x.id}">Abrir</a></span></div>`), 'Nenhuma copy gerada.') +
     sec('Propostas', live(S.pro).filter(x => x.cliente_id === c.id).map(x => `<div class="row"><div>Proposta nº ${numProp(x)}<small>${x.servicos.map(s => esc(servNome(s.servico))).join(', ')}</small></div><span class="hbtns">${badge(STP[x.status] || STP.ativa)}<a class="btn btn-secondary btn-sm" href="${esc(propUrl(x.slug))}" target="_blank" rel="noopener">Ver</a></span></div>`), 'Nenhuma proposta enviada.') +
     sec('Prévias', live(S.pre).filter(v => v.cliente_id === c.id).map(v => `<div class="row"><div>${esc(v.titulo)}<small>Rodada ${v.rodada} · ${fdate(v.created_at)}</small></div><span class="hbtns">${badge(STV[v.status])}<a class="btn btn-secondary btn-sm" href="#/previa/${v.id}">Abrir</a></span></div>`), 'Nenhuma prévia enviada.') +
     `<span class="hbtns"><button class="btn btn-secondary" data-a="pro-form" data-cli="${c.id}" type="button">Nova proposta para este cliente</button><button class="btn btn-secondary" data-a="pre-form" data-cli="${c.id}" type="button">Nova prévia para este cliente</button></span>`;
+};
+
+function planosBox(c) {
+  const pls = S.pla.filter(pl => pl.cliente_id === c.id), ativos = pls.filter(pl => !pl.encerrado_em || pl.encerrado_em.slice(0, 7) >= mesAtual());
+  return `<div class="panel" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap"><h2 style="margin:0">Plano mensal</h2><button class="btn btn-secondary btn-sm" data-a="pla-form" data-cli="${c.id}" type="button">${ativos.length ? 'Adicionar outro plano' : 'Criar plano mensal'}</button></div>` +
+    (pls.map(pl => `<div class="row"><div>${esc(pl.descricao)}${pl.encerrado_em && pl.encerrado_em.slice(0, 7) < mesAtual() ? '<span class="fin-tag">Encerrado</span>' : ''}<small>${descPlano(pl, 1)} · desde ${mesCurto(pl.inicio)} de ${pl.inicio.slice(0, 4)}${pl.encerrado_em ? ' · último mês ' + mesNome(pl.encerrado_em.slice(0, 7)) : ''}${pl.proposta_id ? ' · veio da proposta nº ' + String(pl.proposta_id).padStart(4, '0') : ''}</small></div><span class="hbtns"><button class="btn btn-secondary btn-sm" data-a="pla-form" data-id="${pl.id}" type="button">Editar</button>${pl.encerrado_em ? `<button class="btn btn-ghost btn-sm" data-a="pla-reativar" data-id="${pl.id}" type="button">Reativar</button>` : `<button class="btn btn-ghost btn-sm" data-a="pla-enc-ask" data-id="${pl.id}" type="button">Encerrar</button>`}</span></div>`).join('') ||
+    '<p style="font-size:14px;color:var(--text-muted)">Sem plano mensal. Crie um para acompanhar as cobranças no Financeiro.</p>') + '</div>';
+}
+function planoForm(pl, cid) {
+  const ed = !!pl; pl = pl || { dia_cobranca:10, inicio:mesAtual() };
+  modal(mhead(ed ? 'Editar plano mensal' : 'Novo plano mensal', esc(ed ? planoNome(pl) : (cli(cid) || {}).nome || '')) + `<form data-s="pla-save" data-id="${ed ? pl.id : ''}" data-cli="${esc(cid || '')}"><div class="modal-body">
+    <div class="form-group"><label for="pl_desc">O que está no plano</label><input id="pl_desc" maxlength="120" placeholder="Ex.: Pacote de artes para redes sociais" value="${esc(pl.descricao)}" required></div>
+    <div class="form-row"><div class="form-group"><label for="pl_val">Valor mensal (R$)</label><input id="pl_val" class="money" inputmode="numeric" placeholder="400,00" value="${fmtVal(pl.valor_base)}"></div><div class="form-group"><label for="pl_dia">Dia de cobrança</label><input id="pl_dia" type="number" min="1" max="31" value="${pl.dia_cobranca}"></div></div>
+    <label class="ck" style="margin-bottom:14px"><input type="checkbox" id="pl_pac" data-c="pl-pac" ${pacote(pl) ? 'checked' : ''}>É um pacote com quantidade (ex.: 10 artes por mês)</label>
+    <div class="form-row" id="pl_pacbox" ${pacote(pl) ? '' : 'hidden'}><div class="form-group"><label for="pl_qtd">Quantidade inclusa</label><input id="pl_qtd" type="number" min="1" placeholder="10" value="${esc(pl.qtd_inclusa)}"></div><div class="form-group"><label for="pl_ext">Valor de cada item a mais (R$)</label><input id="pl_ext" class="money" inputmode="numeric" placeholder="40,00" value="${fmtVal(pl.valor_extra)}"></div></div>
+    <div class="form-group"><label for="pl_ini">Primeiro mês trabalhado</label><input id="pl_ini" type="month" value="${pl.inicio}"></div>
+    <p class="hint" style="margin:-6px 0 0">O trabalho de cada mês é cobrado no dia de cobrança do mês seguinte.</p>
+    </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar plano</button></div></form>`);
+}
+
+/* ---- tela do financeiro ---- */
+function entradasDo(m) {
+  const out = [], dia = x => x ? new Date(x).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) : '';
+  S.fec.forEach(f => { if (f.pago_em && f.pago_em.slice(0, 7) === m) { const pl = S.pla.find(x => x.id === f.plano_id); if (pl) out.push({ d:f.pago_em, quem:planoNome(pl), oque:`Mensalidade · trabalho de ${mesCurto(f.mes)}${f.qtd != null && pacote(pl) ? ` · ${f.qtd} itens` : ''}`, v:+f.valor }); } });
+  live(S.pro).forEach(p => { const u = tot(p).u; if (!u) return; const e = dia(p.pago_entrada_em), fi = dia(p.pago_final_em);
+    if (e.slice(0, 7) === m) out.push({ d:e, quem:p.cliente_nome, oque:p.forma_pagamento === 'pix' ? `Entrada de 50% · proposta nº ${numProp(p)}` : `Pagamento ${p.forma_pagamento === 'cartao' ? 'no cartão' : 'do projeto'} · proposta nº ${numProp(p)}`, v:p.forma_pagamento === 'pix' ? half(u) : u });
+    if (p.forma_pagamento === 'pix' && fi.slice(0, 7) === m) out.push({ d:fi, quem:p.cliente_nome, oque:`Segunda metade · proposta nº ${numProp(p)}`, v:u - half(u) }); });
+  return out.sort((a, b) => a.d.localeCompare(b.d));
+}
+const impostoDe = rec => { const i = S.imp || {}; if (i.valor == null || i.valor === '') return null; return i.tipo === 'fixo' ? +i.valor : rec * +i.valor / 100; };
+V.financeiro = arg => {
+  const m = /^\d{4}-\d{2}$/.test(arg || '') ? arg : mesAtual(), comp = mesAdd(m, -1), atual = m === mesAtual();
+  const ent = entradasDo(m), rec = ent.reduce((a, e) => a + e.v, 0), imp = impostoDe(rec);
+  const cobr = S.pla.filter(pl => planoAtivo(pl, comp)).sort((a, b) => a.dia_cobranca - b.dia_cobranca);
+  const aReceber = cobr.filter(pl => !(fechDe(pl, comp) || {}).pago_em).reduce((a, pl) => a + fechValor(pl, comp), 0);
+  const churn = S.pla.filter(pl => pl.encerrado_em && pl.encerrado_em.slice(0, 7) === m), ativos = S.pla.filter(pl => planoAtivo(pl, m));
+  const linha = pl => { const f = fechDe(pl, comp) || {}, v = fechValor(pl, comp), venc = diaCobr(pl, m);
+    return `<div class="row" style="flex-wrap:wrap"><div style="flex:1 1 220px"><a href="#/cliente/${pl.cliente_id || ''}"><strong>${esc(planoNome(pl))}</strong></a><small>${esc(pl.descricao)} · cobrança ${dmy(venc)}${f.pago_em ? ' · recebido em ' + dmy(f.pago_em) : venc < hoje() ? ' · <span style="color:var(--amber)">vencida</span>' : ''}${f.nf_em ? ' · nota emitida' : ''}</small></div>
+      <span class="hbtns">${pacote(pl) ? `<label class="qtd">Itens<input type="number" min="0" value="${f.qtd ?? pl.qtd_inclusa}" data-c="fec-qtd" data-pl="${pl.id}" data-m="${comp}" aria-label="Quantidade entregue em ${mesCurto(comp)}"></label>` : ''}<strong style="min-width:96px;text-align:right">${money(v)}</strong>
+      <button class="btn btn-sm ${f.pago_em ? 'btn-ghost' : 'btn-fechar'}" data-a="fec-set" data-pl="${pl.id}" data-m="${comp}" data-v="pago_em" type="button">${f.pago_em ? 'Desfazer recebido' : 'Recebido'}</button>
+      <button class="btn btn-sm ${f.nf_em ? 'btn-ghost' : 'btn-secondary'}" data-a="fec-set" data-pl="${pl.id}" data-m="${comp}" data-v="nf_em" type="button">${f.nf_em ? 'Desfazer nota' : 'Nota emitida'}</button></span></div>`; };
+  const g4 = 'style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"';
+  return head('Financeiro', 'O que entrou, o que falta receber e quanto separar de imposto, mês a mês.') +
+    `<div class="fin-nav"><a class="btn btn-secondary btn-sm" href="#/financeiro/${mesAdd(m, -1)}" aria-label="Mês anterior">‹</a><strong>${mesNome(m)}</strong><a class="btn btn-secondary btn-sm" href="#/financeiro/${mesAdd(m, 1)}" aria-label="Próximo mês">›</a>${atual ? '' : '<a class="btn btn-secondary btn-sm hj" href="#/financeiro">Voltar para este mês</a>'}</div>
+    <div class="stats-block"><div class="stats-row" ${g4}>${stat('Entrou no mês', money(rec), 'green') + stat('A receber de mensalidades', money(aReceber), 'yellow') + stat('Receita recorrente', money(recorrente(m)), 'purple') + stat('Imposto do mês', imp == null ? 'Definir' : money(imp), 'muted')}</div></div>
+    <div class="panel" style="margin-bottom:16px"><h2>Mensalidades a cobrar em ${mesCurto(m)}</h2><p class="hint" style="margin:-4px 0 8px">Trabalho feito em ${mesNome(comp)}. ${cobr.some(pacote) ? 'Nos pacotes, confirme a quantidade entregue e o valor se ajusta.' : ''}</p>${cobr.map(linha).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano mensal com cobrança neste mês.</p>'}</div>
+    <div class="grid2"><div class="panel"><h2>Entradas de ${mesCurto(m)}</h2>${ent.map(e => `<div class="row"><div>${esc(e.quem)}<small>${dmy(e.d)} · ${esc(e.oque)}</small></div><strong>${money(e.v)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada recebido neste mês ainda. As entradas aparecem quando você marca um pagamento como recebido.</p>'}${ent.length ? `<div class="row"><div><strong>Total</strong></div><strong>${money(rec)}</strong></div>` : ''}</div>
+    <div class="panel"><h2>Imposto</h2><form class="imp-form" data-s="imp-save"><div class="form-group"><label for="imp_t">Como calcular</label><select id="imp_t"><option value="percentual" ${S.imp.tipo !== 'fixo' ? 'selected' : ''}>Percentual sobre o que entrou</option><option value="fixo" ${S.imp.tipo === 'fixo' ? 'selected' : ''}>Valor fixo por mês (MEI)</option></select></div><div class="form-group"><label for="imp_v">${S.imp.tipo === 'fixo' ? 'Valor (R$)' : 'Alíquota (%)'}</label><input id="imp_v" inputmode="decimal" placeholder="${S.imp.tipo === 'fixo' ? '80,90' : '6'}" value="${S.imp.valor == null ? '' : String(S.imp.valor).replace('.', ',')}"></div><button class="btn btn-secondary" type="submit" style="height:52px">Salvar</button></form>
+      <p class="hint" style="margin-top:12px">${imp == null ? 'Defina a forma de cálculo para ver quanto separar por mês.' : `Separe ${money(imp)} de ${mesNome(m)}${S.imp.tipo === 'fixo' ? '.' : `, ${String(S.imp.valor).replace('.', ',')}% de ${money(rec)}.`}`} Confira a alíquota com a sua contabilidade.</p></div></div>
+    <div class="grid2" style="margin-top:16px"><div class="panel"><h2>Planos ativos</h2>${ativos.map(pl => `<div class="row"><div><a href="#/cliente/${pl.cliente_id || ''}">${esc(planoNome(pl))}</a><small>${descPlano(pl)}</small></div><strong>${money(pl.valor_base)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano ativo. Crie na ficha do cliente.</p>'}</div>
+    <div class="panel"><h2>Churn de ${mesCurto(m)}</h2>${churn.map(pl => `<div class="row"><div>${esc(planoNome(pl))}<small>${esc(pl.descricao)} · último mês trabalhado</small></div><strong>−${money(pl.valor_base)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano encerrado neste mês.</p>'}${churn.length ? `<p class="hint" style="margin-top:10px">${churn.length} ${churn.length === 1 ? 'plano encerrado' : 'planos encerrados'} · ${money(churn.reduce((a, pl) => a + +pl.valor_base, 0))} a menos por mês${recorrente(m) ? ` · ${Math.round(churn.length / ativos.length * 100)}% dos planos` : ''}</p>` : ''}</div></div>`;
 };
 
 let fTipo = '', fSt = '';
@@ -443,7 +540,7 @@ function payModal(p) {
     ${p.forma_pagamento === 'cartao' ? `<form class="form-group" data-s="pay-link" data-id="${p.id}"><label for="pay_l">Link de pagamento no cartão (InfinitePay)</label><div style="display:flex;gap:8px"><input type="url" id="pay_l" placeholder="https://" value="${esc(p.link_cartao)}"><button class="btn btn-secondary" type="submit" style="height:52px">Salvar</button></div></form>` : ''}
     ${p.forma_pagamento === 'pix' ? chk('pago_entrada_em', 'Entrada de 50% paga', money(half(u))) + chk('pago_final_em', 'Segunda metade paga, na entrega', money(u - half(u))) : chk('pago_entrada_em', 'Pagamento recebido', money(u))}
     ${chk('nf_emitida_em', 'Nota fiscal emitida', 'valor total · ' + money(u))}` : ''}
-    ${m > 0 ? `<div class="row"><div>Mensalidade por Pix<small>${money(m)} · ${p.dia_cobranca ? 'todo dia ' + p.dia_cobranca : 'sem dia de cobrança definido, edite a proposta'}${p.nf_mensal_ultima ? ' · última nota marcada: ' + p.nf_mensal_ultima.split('-').reverse().join('/') : ''}</small></div>${mensalDevida(p) ? `<button class="btn btn-sm btn-fechar" data-a="pay-mes" data-id="${p.id}" data-keep="1" type="button">Cobrada e nota emitida</button>` : ''}</div>` : ''}
+    ${m > 0 ? `<div class="row"><div>Mensalidade por Pix<small>${money(m)} · as cobranças e notas de cada mês ficam no Financeiro</small></div><a class="btn btn-secondary btn-sm" href="#/financeiro" data-a="close">Abrir Financeiro</a></div>` : ''}
     </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Fechar</button></div>`);
 }
 function gerarSlug(nome) {
@@ -611,12 +708,16 @@ const A = {
   'ag-dia'(d) { const h = hoje(); agDia = d.v === '0' ? null : addDias(agDia || h, +d.v); if (agDia === h) agDia = null; route(); },
   async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); await patch('tar', d.id, { data:addDias(base, 1) }); await sync('Passou para o dia seguinte'); },
   async 'tar-del'(d) { await db(`central_tarefas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); await sync('Tarefa excluída'); },
+  'pla-form'(d) { planoForm(d.id && S.pla.find(x => x.id === d.id), d.cli); },
+  'pla-enc-ask'(d) { const pl = S.pla.find(x => x.id === d.id);
+    modal(mhead('Encerrar plano', `${esc(planoNome(pl))} · ${esc(pl.descricao)}`) + `<form data-s="pla-enc" data-id="${pl.id}"><div class="modal-body"><div class="form-group"><label for="pl_fim">Último mês trabalhado</label><input id="pl_fim" type="month" value="${mesAtual()}" min="${pl.inicio}"></div><p class="hint" style="margin:0">Esse mês ainda é cobrado normalmente. O plano entra no churn dele e sai da receita recorrente a partir do mês seguinte.</p></div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-danger" type="submit">Encerrar plano</button></div></form>`); },
+  async 'pla-reativar'(d) { await patch('pla', d.id, { encerrado_em:null }); await sync('Plano reativado'); },
+  async 'fec-set'(d) { const pl = S.pla.find(x => x.id === d.pl), f = fechDe(pl, d.m); await salvaFech(pl, d.m, { [d.v]:f && f[d.v] ? null : hoje() }); await sync(d.v === 'pago_em' ? (f && f.pago_em ? 'Recebimento desfeito' : 'Mensalidade recebida') : (f && f.nf_em ? 'Nota desmarcada' : 'Nota marcada como emitida')); },
   'pro-clear'() { Object.keys(PF).forEach(k => PF[k] = ''); route(); },
   'svc-add'() { $('svcList').insertAdjacentHTML('beforeend', svcRow({ servico:Object.keys(CAT)[0], cobranca:Object.values(CAT)[0].cobranca })); syncPay(); },
   'svc-rm'(d, el) { if ($('svcList').children.length > 1) el.closest('.svc-row').remove(); syncPay(); },
   'pay-open'(d) { payModal(S.pro.find(p => String(p.id) === String(d.id))); },
   'pay-set'(d) { const p = S.pro.find(x => String(x.id) === String(d.id)); return payPatch(d.id, { [d.v]: p[d.v] ? null : new Date().toISOString() }, 'Atualizado', d.keep); },
-  'pay-mes'(d) { return payPatch(d.id, { nf_mensal_ultima:mesAtual() }, 'Mensalidade e nota marcadas', d.keep); },
   'pro-ask'(d) {
     const p = S.pro.find(x => String(x.id) === String(d.id)), f = d.v === 'fechada';
     modal(`<div class="modal-body" style="padding:32px;text-align:center"><h3 style="font-size:20px;margin-bottom:6px">${f ? 'Concluir proposta' : 'Marcar como perdida'}</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:22px">Confirma que a proposta de <strong>${esc(p.cliente_nome)}</strong> foi ${f ? 'fechada' : 'perdida'}?</p><div class="hbtns" style="justify-content:center"><button class="btn ${f ? 'btn-primary' : 'btn-solid'}" data-a="pro-st" data-id="${p.id}" data-v="${d.v}" type="button">${f ? 'Marcar como concluída' : 'Marcar como perdida'}</button><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button></div></div>`);
@@ -630,6 +731,8 @@ const C = {
   'p-cli'(el) { $('p_nome').hidden = !!el.value; if (!el.value) $('p_nome').focus(); },
   'pay-forma'(el) { return payPatch(el.dataset.id, { forma_pagamento:el.value || null }, 'Forma de pagamento salva', true); },
   'f-st'(el) { fSt = el.value; route(); },
+  'pl-pac'(el) { $('pl_pacbox').hidden = !el.checked; if (el.checked) $('pl_qtd').focus(); },
+  async 'fec-qtd'(el) { const q = parseInt(el.value, 10), pl = S.pla.find(x => x.id === el.dataset.pl); if (!(q >= 0)) return toast('Informe a quantidade entregue.'); await salvaFech(pl, el.dataset.m, { qtd:q }); await sync(`Quantidade salva · ${money(valorPlano(pl, q))}`); },
   async 'bri-st'(el) { await patch('bri', el.dataset.id, { status:el.value }); await sync('Status atualizado'); },
   async 'bri-link'(el) {
     if (!el.value) return; const b = S.bri.find(x => x.id === el.dataset.id), c = cli(el.value), novos = dadosBri(b), falta = {};
@@ -638,6 +741,12 @@ const C = {
     await sync(Object.keys(falta).length ? 'Briefing vinculado e dados do cliente completados' : 'Briefing vinculado');
   },
 };
+async function salvaFech(pl, m, body) {
+  const f = fechDe(pl, m), qtd = 'qtd' in body ? body.qtd : f ? f.qtd : (pacote(pl) ? pl.qtd_inclusa : null);
+  const full = { ...body, qtd, valor:valorPlano(pl, qtd) };
+  if (f && f.pago_em && !('qtd' in body)) delete full.valor;
+  if (f) await patch('fec', f.id, full); else await db('central_fechamentos', 'POST', { plano_id:pl.id, mes:m, ...full });
+}
 async function payPatch(id, body, msg, keep) {
   await patch('pro', id, body); await sync(msg);
   if (keep) payModal(S.pro.find(p => String(p.id) === String(id))); 
@@ -693,6 +802,24 @@ const F = {
       catch (e) { await db(`central_propostas?id=eq.${p.id}`, 'DELETE').catch(() => {}); throw e; }
     }
     closeModal(); await sync(id ? 'Proposta atualizada' : 'Proposta criada');
+  },
+  async 'pla-save'(form) {
+    const pac = $('pl_pac').checked, val = parseVal($('pl_val').value), dia = parseInt($('pl_dia').value, 10), ini = $('pl_ini').value, qtd = pac ? parseInt($('pl_qtd').value, 10) : null, ext = pac ? parseVal($('pl_ext').value) : null;
+    const desc = $('pl_desc').value.trim();
+    if (!desc || !(val > 0)) return toast('Informe o que está no plano e o valor mensal.');
+    if (!(dia >= 1 && dia <= 31)) return toast('O dia de cobrança vai de 1 a 31.');
+    if (!/^\d{4}-\d{2}$/.test(ini)) return toast('Informe o primeiro mês trabalhado.');
+    if (pac && !(qtd > 0)) return toast('Informe a quantidade inclusa no pacote.');
+    const body = { descricao:desc.slice(0, 120), valor_base:val, dia_cobranca:dia, inicio:ini, qtd_inclusa:qtd, valor_extra:pac ? ext : null };
+    if (form.dataset.id) await patch('pla', form.dataset.id, body); else { const c = cli(form.dataset.cli); await db('central_planos', 'POST', { ...body, cliente_id:c ? c.id : null, cliente_nome:c ? c.nome : null }); }
+    closeModal(); await sync('Plano salvo');
+  },
+  async 'pla-enc'(form) { const m = $('pl_fim').value; if (!/^\d{4}-\d{2}$/.test(m)) return toast('Informe o último mês trabalhado.'); await patch('pla', form.dataset.id, { encerrado_em:fimMes(m) }); closeModal(); await sync('Plano encerrado'); },
+  async 'imp-save'() {
+    const tipo = $('imp_t').value === 'fixo' ? 'fixo' : 'percentual', raw = $('imp_v').value.trim(), v = raw ? parseFloat(raw.replace(/\./g, '').replace(',', '.')) : null;
+    if (raw && !(v >= 0)) return toast('Informe um número. Ex.: 6 ou 80,90');
+    if (tipo === 'percentual' && v > 100) return toast('A alíquota vai de 0 a 100%.');
+    await db('central_config?chave=eq.imposto', 'PATCH', { valor:{ tipo, valor:v }, updated_at:new Date().toISOString() }); await sync('Imposto salvo');
   },
   async 'cli-save'(form) {
     const v = id => form.querySelector('#c_' + id).value.trim() || null;
