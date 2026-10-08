@@ -48,4 +48,4 @@ async def main():
         print('mobile overflow:', await mp.evaluate('document.documentElement.scrollWidth>innerWidth'))
         await mp.screenshot(path='r_m_home.png', full_page=True)
         print('ERRS', errs); await b.close()
-asyncio.run(main())
+if __name__ == "__main__": asyncio.run(main())
