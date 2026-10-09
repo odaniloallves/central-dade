@@ -98,7 +98,7 @@ lit('<p class="lede">Cada serviço abaixo mostra o que será feito e o que você
 rx(r'<div class="notes">.*?</ul></div>\s*</div>',lambda m:'<div class="notes">${(pr.condicoes||[]).map(c=>`<div class="note"><h4>${esc(c.titulo)}</h4><p>${esc(c.texto)}</p></div>`).join("")}</div>',1)
 rx(r'(<div class="proc-step"><div class="st">Etapa 4</div>.*?</div>\s*</div>)',lambda m:m.group(1)+'${prazosHtml}',1)
 lit('${svs.map(s=>`<span>${esc(s.nome)}</span>`).join("")}','${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}')
-lit('<div class="pay-card hl"><div class="pk">Condição de pagamento</div>','${opcs.length?`<div class="pay-card"><div class="pk">Opcionais, você escolhe na aprovação</div><div class="pv txt">${opcs.map(s=>esc(s.nome)+": + "+money(s.valor)+(s.cobranca==="mensal"?"/mês":"")).join("<br>")}</div></div>`:""}<div class="pay-card hl"><div class="pk">Condição de pagamento</div>')
+lit('<div class="pay-card hl"><div class="pk">Condição de pagamento</div>','${obs.length?`<div class="pay-card"><div class="pk">Observações sobre os valores</div>${obs.map(s=>`<p class="pd" style="color:var(--ink-200);font-size:15px;line-height:1.55;margin-top:10px">${obs.length>1?`<strong>${esc(s.nome)}:</strong> `:""}${esc(s.observacao)}</p>`).join("")}</div>`:""}${opcs.length?`<div class="pay-card"><div class="pk">Opcionais, você escolhe na aprovação</div><div class="pv txt">${opcs.map(s=>esc(s.nome)+": + "+money(s.valor)+(s.cobranca==="mensal"?"/mês":"")).join("<br>")}</div></div>`:""}<div class="pay-card hl"><div class="pk">Condição de pagamento</div>')
 assert '<?' not in body and '$pr' not in body and '$s[' not in body, re.findall(r'<\?[^>]{0,60}',body)[:5]
 secoes=re.search(r"\$secoes = \[(.*?)\];",php,re.S).group(1)
 SEC=re.findall(r"'(\w+)'\s*=>\s*'([^']+)'",secoes)
@@ -145,7 +145,7 @@ const svgWpp='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 function aviso(titulo,texto,botao){return `<main class="expired"><div class="box"><img src="assets/img/dade/logo-dade-colorido.png" alt="dade"><h1>${titulo}</h1><p>${texto}</p>${botao||''}</div></main>`}
 function pagina(pr){
   const svs=(pr.servicos||[]).map(s=>({...(window.DADE_SERVICOS[s.servico]||{nome:s.servico,subtitulo:'Serviço sob medida',escopo:['Escopo conforme alinhado com o cliente'],entrega:['Entrega conforme alinhado com o cliente']}),...s}));
-  const conta=s=>!s.opcional||s.aceito===true,opcs=pr.aprovada_em?[]:svs.filter(s=>s.opcional);
+  const conta=s=>!s.opcional||s.aceito===true,opcs=pr.aprovada_em?[]:svs.filter(s=>s.opcional),obs=svs.filter(s=>s.observacao&&(!pr.aprovada_em||conta(s)));
   let tm=0,tu=0;svs.filter(conta).forEach(s=>s.cobranca==='mensal'?tm+=Number(s.valor):tu+=Number(s.valor));
   const prazosHtml=svs.some(s=>s.prazo)?`<div class="prazos"><div class="k">Prazos deste projeto</div>${svs.filter(s=>s.prazo).map(s=>`<div class="pz"><span>${esc(s.nome)}</span><strong>${esc(s.prazo)}</strong></div>`).join('')}<p>Os prazos contam a partir do primeiro pagamento.</p></div>`:'';
   let headline='Sob consulta',headSub='';
