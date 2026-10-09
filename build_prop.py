@@ -177,5 +177,6 @@ page=page.replace('__SB_URL__',SB_URL).replace('__SB_KEY__',SB_KEY).replace('__S
 open('site/proposta.html','w',encoding='utf-8').write(page)
 exec(open('build_pag.py',encoding='utf-8').read())
 exec(open('build_prev.py',encoding='utf-8').read())
+exec(open('build_linha.py',encoding='utf-8').read())
 open('check_prop.js','w',encoding='utf-8').write(re.findall(r'<script>(.*?)</script>',page,re.S)[0])
 print(len(page), os.path.getsize('site/assets/img/dade/fundador.jpg'), list(cat.keys()))

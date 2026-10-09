@@ -34,7 +34,7 @@ async def main():
         await pg.screenshot(path='r_drag.png')
         await pg.click('[data-a=cv-go][data-v="1"]'); await pg.wait_for_timeout(600); print('seta ›:', await pg.locator('.cv-card.on .cv-top').inner_text())
         await pg.focus('#cvStage'); await pg.keyboard.press('ArrowLeft'); await pg.wait_for_timeout(600); print('tecla ←:', await pg.locator('.cv-card.on .cv-top').inner_text())
-        await pg.click('.cv-dots button >> nth=7'); await pg.wait_for_timeout(600); print('ponto 8:', await pg.locator('.cv-card.on .cv-top').inner_text())
+        await pg.click('.cv-dots button >> nth=-1'); await pg.wait_for_timeout(600); print('último ponto:', await pg.locator('.cv-card.on .cv-top').inner_text())
         await pg.screenshot(path='r_news.png')
         # clicar num card lateral leva até ele, não abre o link
         side = pg.locator('.cv-card[data-cv=tar]'); await side.click(position={'x': 150, 'y': 60}); await pg.wait_for_timeout(600)
