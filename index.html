@@ -571,7 +571,7 @@ td[data-label="Serviços"]{min-width:150px}
 <div id="toast" class="toast" role="status"></div>
 <div id="print"></div>
 
-<script src="assets/dade.js?v=16a15195"></script>
+<script src="assets/dade.js?v=74fdcb69"></script>
 <script>
 /* ============ CONFIG ============ */
 const SB = 'https://hgkxybswazgcpqpksvkf.supabase.co';
@@ -694,6 +694,8 @@ const ETAPAS = {
   captacao_edicao_video:['Planejamento e roteiro', 'Gravação', 'Edição', 'Revisão e ajustes', 'Entrega'],
   criativos_social:['Briefing do mês', 'Criação', 'Aprovação', 'Entrega'],
   prototipo_app:['Briefing', 'Fluxos e wireframes', 'Design das telas', 'Protótipo navegável', 'Revisão e ajustes', 'Entrega'],
+  materiais_impressos:['Briefing', 'Criação das peças', 'Aprovação', 'Fechamento de arquivo para a gráfica', 'Entrega'],
+  pecas_digitais:['Briefing', 'Criação', 'Aprovação', 'Entrega'],
   automacao:['Mapeamento do processo', 'Configuração', 'Testes', 'Entrega e orientação'],
 };
 const ETAPAS_PADRAO = ['Briefing', 'Criação', 'Prévia', 'Ajustes', 'Entrega'];
@@ -922,6 +924,7 @@ function planosBox(c) {
 function planoForm(pl, cid) {
   const ed = !!pl; pl = pl || { dia_cobranca:10, inicio:mesAtual() };
   modal(mhead(ed ? 'Editar plano mensal' : 'Novo plano mensal', esc(ed ? planoNome(pl) : (cli(cid) || {}).nome || '')) + `<form data-s="pla-save" data-id="${ed ? pl.id : ''}" data-cli="${esc(cid || '')}"><div class="modal-body">
+    ${ed || cid ? '' : `<div class="form-group"><label for="pl_cli">Cliente</label><select id="pl_cli"><option value="">Escolha o cliente</option>${ativos().map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select><p class="hint" style="margin:8px 0 0">Não está na lista? Cadastre primeiro em Clientes → Novo cliente.</p></div>`}
     <div class="form-group"><label for="pl_desc">O que está no plano</label><input id="pl_desc" maxlength="120" placeholder="Ex.: Pacote de artes para redes sociais" value="${esc(pl.descricao)}" required></div>
     <div class="form-row"><div class="form-group"><label for="pl_val">Valor mensal (R$)</label><input id="pl_val" class="money" inputmode="numeric" placeholder="400,00" value="${fmtVal(pl.valor_base)}"></div><div class="form-group"><label for="pl_dia">Dia de cobrança</label><input id="pl_dia" type="number" min="1" max="31" value="${pl.dia_cobranca}"></div></div>
     <label class="ck" style="margin-bottom:14px"><input type="checkbox" id="pl_pac" data-c="pl-pac" ${pacote(pl) ? 'checked' : ''}>É um pacote com quantidade (ex.: 10 artes por mês)</label>
@@ -969,7 +972,7 @@ V.financeiro = arg => {
     <div class="grid2"><div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap"><h2 style="margin:0">Entradas de ${mesCurto(m)}</h2><button class="btn btn-primary btn-sm" data-a="avu-form" data-m="${m}" type="button">+ Entrada avulsa</button></div>${ent.map(e => `<div class="row"><div>${esc(e.quem)}<small>${dmy(e.d)} · ${esc(e.oque)}</small>${e.avu ? `<span class="hbtns" style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-a="avu-form" data-id="${e.avu}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-a="avu-del-ask" data-id="${e.avu}" type="button">Excluir</button></span>` : ''}</div><strong>${money(e.v)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nada recebido neste mês ainda. As entradas aparecem quando você marca um pagamento como recebido ou registra uma entrada avulsa.</p>'}${ent.length ? `<div class="row"><div><strong>Total</strong></div><strong>${money(rec)}</strong></div>` : ''}</div>
     <div class="panel"><h2>Imposto</h2><form class="imp-form" data-s="imp-save"><div class="form-group"><label for="imp_t">Como calcular</label><select id="imp_t"><option value="percentual" ${S.imp.tipo !== 'fixo' ? 'selected' : ''}>Percentual sobre o que entrou</option><option value="fixo" ${S.imp.tipo === 'fixo' ? 'selected' : ''}>Valor fixo por mês (MEI)</option></select></div><div class="form-group"><label for="imp_v">${S.imp.tipo === 'fixo' ? 'Valor (R$)' : 'Alíquota (%)'}</label><input id="imp_v" inputmode="decimal" placeholder="${S.imp.tipo === 'fixo' ? '80,90' : '6'}" value="${S.imp.valor == null ? '' : String(S.imp.valor).replace('.', ',')}"></div><button class="btn btn-secondary" type="submit" style="height:52px">Salvar</button></form>
       <p class="hint" style="margin-top:12px">${imp == null ? 'Defina a forma de cálculo para ver quanto separar por mês.' : `Separe ${money(imp)} de ${mesNome(m)}${S.imp.tipo === 'fixo' ? '.' : `, ${String(S.imp.valor).replace('.', ',')}% de ${money(rec)}.`}`} Confira a alíquota com a sua contabilidade.</p></div></div>
-    <div class="grid2" style="margin-top:16px"><div class="panel"><h2>Planos ativos</h2>${ativos.map(pl => `<div class="row"><div><a href="#/cliente/${pl.cliente_id || ''}">${esc(planoNome(pl))}</a><small>${descPlano(pl)}</small></div><strong>${money(pl.valor_base)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano ativo. Crie na ficha do cliente.</p>'}</div>
+    <div class="grid2" style="margin-top:16px"><div class="panel"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap"><h2 style="margin:0">Planos ativos</h2><button class="btn btn-primary btn-sm" data-a="pla-form" type="button">+ Plano mensal</button></div>${ativos.map(pl => `<div class="row"><div><a href="#/cliente/${pl.cliente_id || ''}">${esc(planoNome(pl))}</a><small>${descPlano(pl)}</small></div><strong>${money(pl.valor_base)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano ativo. Use o botão + Plano mensal ou a ficha do cliente.</p>'}</div>
     <div class="panel"><h2>Churn de ${mesCurto(m)}</h2>${churn.map(pl => `<div class="row"><div>${esc(planoNome(pl))}<small>${esc(pl.descricao)} · último mês trabalhado</small></div><strong>−${money(pl.valor_base)}</strong></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Nenhum plano encerrado neste mês.</p>'}${churn.length ? `<p class="hint" style="margin-top:10px">${churn.length} ${churn.length === 1 ? 'plano encerrado' : 'planos encerrados'} · ${money(churn.reduce((a, pl) => a + +pl.valor_base, 0))} a menos por mês${recorrente(m) ? ` · ${Math.round(churn.length / ativos.length * 100)}% dos planos` : ''}</p>` : ''}</div></div>`;
 };
 
@@ -1330,7 +1333,7 @@ const A = {
 };
 const C = {
   async 'tar-ck'(el) { await patch('tar', el.dataset.id, { feita_em:el.checked ? new Date().toISOString() : null }); await sync(el.checked ? 'Feito' : 'Reaberta'); },
-  'svc-serv'(el) { const o = el.selectedOptions[0], row = el.closest('.svc-row'), cu = row.querySelector('[name=servico_custom]'); row.querySelector('[name=cobranca]').value = o.dataset.cob; syncPay(); cu.hidden = el.value !== '__custom__'; if (!cu.hidden) cu.focus(); },
+  'svc-serv'(el) { const o = el.selectedOptions[0], row = el.closest('.svc-row'), cu = row.querySelector('[name=servico_custom]'); if (el.value === 'materiais_impressos' && $('p_imp')) $('p_imp').checked = true; row.querySelector('[name=cobranca]').value = o.dataset.cob; syncPay(); cu.hidden = el.value !== '__custom__'; if (!cu.hidden) cu.focus(); },
   'pre-arqs'(el) { const ok = [...el.files].filter(f => /^image\/(png|jpeg|webp)$/.test(f.type)); if (ok.length < el.files.length) toast('Só PNG, JPG ou WebP.'); preArq.push(...ok); el.value = ''; arqsRender(); },
   'p-cli'(el) { $('p_nome').hidden = !!el.value; if (!el.value) $('p_nome').focus(); },
   'pay-forma'(el) { return payPatch(el.dataset.id, { forma_pagamento:el.value || null }, 'Forma de pagamento salva', true); },
@@ -1452,7 +1455,7 @@ const F = {
     if (!/^\d{4}-\d{2}$/.test(ini)) return toast('Informe o primeiro mês trabalhado.');
     if (pac && !(qtd > 0)) return toast('Informe a quantidade inclusa no pacote.');
     const body = { descricao:desc.slice(0, 120), valor_base:val, dia_cobranca:dia, inicio:ini, qtd_inclusa:qtd, valor_extra:pac ? ext : null };
-    if (form.dataset.id) await patch('pla', form.dataset.id, body); else { const c = cli(form.dataset.cli); await db('central_planos', 'POST', { ...body, cliente_id:c ? c.id : null, cliente_nome:c ? c.nome : null }); }
+    if (form.dataset.id) await patch('pla', form.dataset.id, body); else { const c = cli(form.dataset.cli || ($('pl_cli') && $('pl_cli').value)); if (!c) return toast('Escolha o cliente do plano.'); await db('central_planos', 'POST', { ...body, cliente_id:c ? c.id : null, cliente_nome:c ? c.nome : null }); }
     closeModal(); await sync('Plano salvo');
   },
   async 'pla-enc'(form) { const m = $('pl_fim').value; if (!/^\d{4}-\d{2}$/.test(m)) return toast('Informe o último mês trabalhado.'); await patch('pla', form.dataset.id, { encerrado_em:fimMes(m) }); closeModal(); await sync('Plano encerrado'); },
