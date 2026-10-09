@@ -28,4 +28,4 @@ async def main():
         await mp.goto(BASE + 'index.html#/financeiro'); await mp.fill('#lEmail', 'a@a.com'); await mp.fill('#lPass', 'x'); await mp.click('#lBtn'); await mp.wait_for_selector('.fin-nav')
         await mp.click('[data-a=avu-form]'); await mp.wait_for_timeout(300); print('mobile overflow:', await mp.evaluate('document.documentElement.scrollWidth>innerWidth')); await mp.screenshot(path='u_m_modal.png')
         print('ERRS', errs); await b.close()
-asyncio.run(main())
+if __name__ == "__main__": asyncio.run(main())
