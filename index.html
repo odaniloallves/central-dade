@@ -440,6 +440,13 @@ td[data-label="Serviços"]{min-width:150px}
 .tarefa .tx small{display:block;font-size:12px;color:var(--amber);margin-top:3px}
 .tarefa.ok .tx{color:var(--text-muted);text-decoration:line-through}
 .tarefa .ac{display:flex;gap:6px;flex:none}
+.tarefa .mv{display:flex;align-items:center;gap:2px;flex:none;margin:-4px 0 0 -6px}
+.tarefa .mv button{width:30px;height:30px;padding:0;border:0;background:none;color:var(--text-muted);border-radius:8px;cursor:pointer;font-size:14px;line-height:1}
+.tarefa .mv button:hover{background:var(--surface);color:var(--text-primary)}
+.tarefa .mv button:disabled{opacity:.25;cursor:default;background:none}
+.tarefa .alca{cursor:grab;touch-action:none;font-size:16px;letter-spacing:-2px}
+.tarefa.arrastando{background:var(--surface);border-radius:12px;box-shadow:0 10px 30px -12px rgba(0,0,0,.6);position:relative;z-index:5;cursor:grabbing}
+.tarefa.arrastando .alca{cursor:grabbing}
 .ag-add input{min-width:0}
 .fin-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
 .fin-nav strong{font-size:17px;min-width:180px}
@@ -494,8 +501,8 @@ td[data-label="Serviços"]{min-width:150px}
 .ag-add input{flex:none;width:100%}
 .ag-add .btn{width:100%}
 .tarefa{flex-wrap:wrap}
-.tarefa .tx{flex:1 1 calc(100% - 40px)}
-.tarefa .ac{width:100%;padding-left:36px}
+.tarefa .tx{flex:1 1 0;min-width:0}
+.tarefa .ac{width:100%;justify-content:flex-end}
 }
 .prog{height:6px;background:var(--surface);border-radius:20px;overflow:hidden;margin:4px 0 20px}
 .prog div{height:100%;background:var(--lime);border-radius:20px}
@@ -1159,17 +1166,18 @@ function compPdf(p) {
 
 /* ---- agenda ---- */
 let agDia = null;
-const pendHoje = () => S.tar.filter(x => !x.feita_em && x.data <= hoje());
+const porOrdem = (a, b) => (a.ordem || 0) - (b.ordem || 0) || a.data.localeCompare(b.data) || String(a.created_at).localeCompare(String(b.created_at));
+const pendHoje = () => S.tar.filter(x => !x.feita_em && x.data <= hoje()).sort(porOrdem);
 const feitasEm = d => S.tar.filter(x => x.feita_em && new Date(x.feita_em).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) === d);
 const diaLongo = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
 function tarefasDo(d) {
   const h = hoje();
   if (d === h) return { pend:pendHoje(), ok:feitasEm(h) };
-  if (d > h) return { pend:S.tar.filter(x => !x.feita_em && x.data === d), ok:[] };
+  if (d > h) return { pend:S.tar.filter(x => !x.feita_em && x.data === d).sort(porOrdem), ok:[] };
   return { pend:[], ok:feitasEm(d) };
 }
-const tarefaHtml = (x, curto) => { const h = hoje(), atras = !x.feita_em && x.data < h;
-  return `<div class="tarefa ${x.feita_em ? 'ok' : ''}"><input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${atras ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
+const tarefaHtml = (x, curto, i, n) => { const h = hoje(), atras = !x.feita_em && x.data < h, mover = !curto && !x.feita_em && n > 1;
+  return `<div class="tarefa ${x.feita_em ? 'ok' : ''}" data-tid="${x.id}">${mover ? `<div class="mv"><button class="alca" type="button" data-alca="1" aria-label="Arrastar para mudar a ordem" title="Arraste para mudar a ordem">⋮⋮</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="-1" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="1" aria-label="Descer" ${i === n - 1 ? 'disabled' : ''}>↓</button></div>` : ''}<input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${atras ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
 V.agenda = () => {
   const h = hoje(), d = agDia || h, { pend, ok } = tarefasDo(d), total = pend.length + ok.length, passado = d < h;
   return head('Agenda', 'O que você precisa fazer. O que não for concluído passa sozinho para o dia seguinte.') +
@@ -1177,7 +1185,7 @@ V.agenda = () => {
     <div class="panel">
       ${passado ? '' : `<form class="ag-add" data-s="tar-add"><input id="tarNova" maxlength="500" placeholder="${d === h ? 'O que você precisa fazer hoje?' : 'Adicionar tarefa para este dia'}" autocomplete="off"><button class="btn btn-primary" type="submit">Adicionar</button></form>`}
       ${total ? `<div style="font-size:13px;color:var(--text-secondary)">${ok.length} de ${total} ${total === 1 ? 'concluída' : 'concluídas'}</div><div class="prog"><div style="width:${total ? ok.length / total * 100 : 0}%"></div></div>` : ''}
-      ${pend.map(x => tarefaHtml(x)).join('')}${ok.map(x => tarefaHtml(x)).join('')}
+      <div id="agPend">${pend.map((x, i) => tarefaHtml(x, false, i, pend.length)).join('')}</div>${ok.map(x => tarefaHtml(x)).join('')}
       ${total ? '' : `<p style="font-size:14px;color:var(--text-muted);padding:8px 0">${passado ? 'Nenhuma tarefa concluída neste dia.' : 'Nada por aqui ainda.'}</p>`}
       ${passado ? '<p class="hint">Dias anteriores mostram o que foi concluído. O que ficou em aberto aparece em Hoje.</p>' : ''}
     </div>`;
@@ -1276,6 +1284,8 @@ const A = {
   },
   'ag-dia'(d) { const h = hoje(); agDia = d.v === '0' ? null : addDias(agDia || h, +d.v); if (agDia === h) agDia = null; route(); },
   async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); await patch('tar', d.id, { data:addDias(base, 1) }); await sync('Passou para o dia seguinte'); },
+  async 'tar-mv'(d) { const ids = [...document.querySelectorAll('#agPend .tarefa')].map(el => el.dataset.tid), i = ids.indexOf(d.id), j = i + +d.v;
+    if (i < 0 || j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; await salvaOrdem(ids); },
   async 'tar-del'(d) { await db(`central_tarefas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); await sync('Tarefa excluída'); },
   'avu-form'(d) {
     const a = d.id ? S.avu.find(x => x.id === d.id) : { recebido_em:d.m && d.m !== mesAtual() ? d.m + '-01' : hoje() };
@@ -1352,6 +1362,25 @@ function linhaModal(p) {
     <ol class="lt">${et.map((t, i) => { const c = i < a ? 'ok' : i === a ? 'now' : ''; return `<li class="${c}"><span class="d">${c === 'ok' ? '✓' : ''}</span><span>${esc(t)}</span>${c === 'now' ? '<span class="tag">Em andamento</span>' : c === 'ok' ? '<span class="tag">Concluída</span>' : `<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-a="lin-set" data-id="${p.id}" data-v="${i}" type="button">Ir para esta</button>`}</li>`; }).join('')}</ol>
   </div><div class="modal-foot" style="flex-wrap:wrap"><button class="btn btn-secondary" data-a="lin-edit" data-id="${p.id}" type="button">Editar etapas</button>${a > 0 ? `<button class="btn btn-secondary" data-a="lin-step" data-id="${p.id}" data-v="-1" type="button">Voltar uma etapa</button>` : ''}${fim ? '' : `<button class="btn btn-primary" data-a="lin-step" data-id="${p.id}" data-v="1" type="button">${a === n - 1 ? 'Concluir projeto' : 'Concluir etapa atual'}</button>`}</div>`);
 }
+async function salvaOrdem(ids) {
+  const muda = ids.map((id, k) => [id, (k + 1) * 10]).filter(([id, o]) => { const t = S.tar.find(x => x.id === id); return t && (t.ordem || 0) !== o; });
+  muda.forEach(([id, o]) => { const t = S.tar.find(x => x.id === id); if (t) t.ordem = o; }); route();
+  await Promise.all(muda.map(([id, o]) => patch('tar', id, { ordem:o }))); await sync('Ordem salva');
+}
+/* arrastar tarefas pela alça ⋮⋮ (mouse e toque) */
+(() => {
+  let d = null;
+  document.addEventListener('pointerdown', e => { const a = e.target.closest('[data-alca]'); if (!a || e.button) return; const el = a.closest('.tarefa'), box = $('agPend'); if (!el || !box) return;
+    e.preventDefault(); d = { el, box, y:e.clientY, id:e.pointerId, moveu:false }; el.classList.add('arrastando'); try { a.setPointerCapture(e.pointerId); } catch (er) {} });
+  document.addEventListener('pointermove', e => { if (!d || e.pointerId !== d.id) return; const dy = e.clientY - d.y; d.el.style.transform = `translateY(${dy}px)`; if (Math.abs(dy) > 4) d.moveu = true;
+    const irmaos = [...d.box.querySelectorAll('.tarefa')].filter(x => x !== d.el), meio = d.el.getBoundingClientRect().top + d.el.offsetHeight / 2;
+    const antes = irmaos.find(x => { const r = x.getBoundingClientRect(); return meio < r.top + r.height / 2; });
+    const atual = d.el.nextElementSibling === antes || (!antes && d.el === d.box.lastElementChild);
+    if (!atual) { const topo = d.el.getBoundingClientRect().top; antes ? d.box.insertBefore(d.el, antes) : d.box.appendChild(d.el); d.y += d.el.getBoundingClientRect().top - topo; d.el.style.transform = `translateY(${e.clientY - d.y}px)`; } });
+  const fim = e => { if (!d || e.pointerId !== d.id) return; const { el, box, moveu } = d; d = null; el.classList.remove('arrastando'); el.style.transform = '';
+    if (moveu) { const ids = [...box.querySelectorAll('.tarefa')].map(x => x.dataset.tid); run(salvaOrdem, ids); } };
+  document.addEventListener('pointerup', fim); document.addEventListener('pointercancel', fim);
+})();
 async function salvaFech(pl, m, body) {
   const f = fechDe(pl, m), qtd = 'qtd' in body ? body.qtd : f ? f.qtd : (pacote(pl) ? pl.qtd_inclusa : null);
   const full = { ...body, qtd, valor:valorPlano(pl, qtd) };
@@ -1366,7 +1395,8 @@ const F = {
   async 'tar-add'(form) {
     const inp = form.querySelector('#tarNova'), texto = inp.value.trim(); if (!texto) return inp.focus();
     const d = location.hash.startsWith('#/agenda') && agDia && agDia > hoje() ? agDia : hoje();
-    await db('central_tarefas', 'POST', { texto:texto.slice(0, 500), data:d }); await sync('Tarefa adicionada');
+    const fim = Math.max(0, ...S.tar.filter(x => !x.feita_em).map(x => x.ordem || 0)) + 10;
+    await db('central_tarefas', 'POST', { texto:texto.slice(0, 500), data:d, ordem:fim }); await sync('Tarefa adicionada');
     const n = $('tarNova'); if (n) n.focus();
   },
   async 'pre-save'(form) {
