@@ -77,6 +77,46 @@ function catalogoServicos() {
                 'Vídeos finalizados em alta resolução',
             ],
         ],
+        'captacao_video' => [
+            'nome'      => 'Captação de Vídeo',
+            'subtitulo' => 'Imagem bem feita desde a gravação',
+            'cobranca'  => 'unico',
+            'escopo'    => [
+                'Planejamento da gravação e roteiro de cenas',
+                'Captação com equipamento profissional de vídeo e áudio',
+                'Direção no set e cuidado com luz e enquadramento',
+            ],
+            'entrega'   => [
+                'Arquivos brutos organizados e prontos para edição',
+            ],
+        ],
+        'edicao_video' => [
+            'nome'      => 'Edição de Vídeo',
+            'subtitulo' => 'Ritmo, corte e acabamento que prendem a atenção',
+            'cobranca'  => 'unico',
+            'escopo'    => [
+                'Seleção dos melhores trechos e montagem',
+                'Cortes, trilha, legendas e tratamento de cor',
+                'Ajustes de áudio e elementos gráficos da marca',
+            ],
+            'entrega'   => [
+                'Vídeos finalizados nos formatos de cada canal',
+            ],
+        ],
+        'captacao_edicao_video' => [
+            'nome'      => 'Captação e Edição de Vídeos',
+            'subtitulo' => 'Da gravação ao vídeo pronto para publicar',
+            'cobranca'  => 'unico',
+            'escopo'    => [
+                'Planejamento da gravação e roteiro de cenas',
+                'Captação com equipamento profissional de vídeo e áudio',
+                'Montagem, cortes, trilha, legendas e tratamento de cor',
+                'Elementos gráficos e acabamento no padrão da marca',
+            ],
+            'entrega'   => [
+                'Vídeos finalizados nos formatos de cada canal',
+            ],
+        ],
         'criativos_social' => [
             'nome'      => 'Criativos para Redes Sociais',
             'subtitulo' => 'Conteúdo visual consistente, todo mês',
