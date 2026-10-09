@@ -98,6 +98,7 @@ lit('<p class="lede">Cada serviço abaixo mostra o que será feito e o que você
 rx(r'<div class="notes">.*?</ul></div>\s*</div>',lambda m:'<div class="notes">${(pr.condicoes||[]).map(c=>`<div class="note"><h4>${esc(c.titulo)}</h4><p>${esc(c.texto)}</p></div>`).join("")}</div>',1)
 rx(r'(<div class="proc-step"><div class="st">Etapa 4</div>.*?</div>\s*</div>)',lambda m:m.group(1)+'${prazosHtml}',1)
 lit('${svs.map(s=>`<span>${esc(s.nome)}</span>`).join("")}','${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}')
+lit('<div class="items">${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}</div>','${svs.filter(conta).length>1?`<div class="brk">${svs.filter(conta).map(s=>`<div class="ln"><span>${esc(s.nome)}</span><b>${money(s.valor)}${s.cobranca==="mensal"?" <small>/mês</small>":""}</b></div>`).join("")}${tu>0?`<div class="ln tot"><span>${tm>0?"Total do projeto":"Total"}</span><b>${money(tu)}</b></div>`:""}${tm>0?`<div class="ln tot"><span>${tu>0?"Total mensal":"Total"}</span><b>${money(tm)} <small>/mês</small></b></div>`:""}</div>`:`<div class="items">${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}</div>`}')
 lit('<div class="pay-card hl"><div class="pk">Condição de pagamento</div>','${obs.length?`<div class="pay-card"><div class="pk">Observações sobre os valores</div>${obs.map(s=>`<p class="pd" style="color:var(--ink-200);font-size:15px;line-height:1.55;margin-top:10px">${obs.length>1?`<strong>${esc(s.nome)}:</strong> `:""}${esc(s.observacao)}</p>`).join("")}</div>`:""}${opcs.length?`<div class="pay-card"><div class="pk">Opcionais, você escolhe na aprovação</div><div class="pv txt">${opcs.map(s=>esc(s.nome)+": + "+money(s.valor)+(s.cobranca==="mensal"?"/mês":"")).join("<br>")}</div></div>`:""}<div class="pay-card hl"><div class="pk">Condição de pagamento</div>')
 assert '<?' not in body and '$pr' not in body and '$s[' not in body, re.findall(r'<\?[^>]{0,60}',body)[:5]
 secoes=re.search(r"\$secoes = \[(.*?)\];",php,re.S).group(1)
@@ -127,6 +128,12 @@ page='''<!DOCTYPE html>
 .prazos .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--ink-500);margin-bottom:10px}
 .prazos .pz{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--hairline-light);font-size:16px}
 .prazos p{font-size:14px;color:var(--ink-500);margin-top:14px}
+.brk{display:flex;flex-direction:column;margin-top:28px;border-top:1px solid var(--hairline-dark)}
+.brk .ln{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:14px 0;border-bottom:1px solid var(--hairline-dark);font-size:16px;color:var(--ink-200)}
+.brk .ln b{color:var(--white);font-weight:600;white-space:nowrap}
+.brk .ln small{font-size:.8em;color:var(--ink-400);font-weight:500}
+.brk .ln.tot{border-bottom:0;padding-top:16px;font-size:17px;color:var(--white);font-weight:600}
+.brk .ln.tot b{color:var(--lime);font-size:20px}
 .clients-row{display:flex;align-items:center;flex-wrap:wrap;gap:36px 56px}
 .clients-row img{height:34px;width:auto;filter:invert(1);opacity:.82}
 @media (max-width:860px){.clients-row{gap:28px 36px}.clients-row img{height:26px}}</style>
