@@ -117,6 +117,31 @@ function catalogoServicos() {
                 'Vídeos finalizados nos formatos de cada canal',
             ],
         ],
+        'materiais_impressos' => [
+            'nome'      => 'Materiais Impressos',
+            'subtitulo' => 'A marca bem resolvida também no papel',
+            'cobranca'  => 'unico',
+            'escopo'    => [
+                'Criação das peças no padrão da marca',
+                'Ajuste de formatos, sangria e margens para a gráfica',
+                'Revisão de cores e textos antes da impressão',
+            ],
+            'entrega'   => [
+                'Arquivos finais prontos para impressão (PDF de alta resolução)',
+            ],
+        ],
+        'pecas_digitais' => [
+            'nome'      => 'Peças Digitais',
+            'subtitulo' => 'Capas, banners e peças avulsas com a cara da marca',
+            'cobranca'  => 'unico',
+            'escopo'    => [
+                'Criação das peças conforme o briefing',
+                'Adaptação para os formatos de cada canal',
+            ],
+            'entrega'   => [
+                'Arquivos finais em PNG, JPG ou no formato de cada canal',
+            ],
+        ],
         'criativos_social' => [
             'nome'      => 'Criativos para Redes Sociais',
             'subtitulo' => 'Conteúdo visual consistente, todo mês',
