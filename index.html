@@ -394,6 +394,22 @@ td[data-label="Serviços"]{min-width:150px}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .thumbs a{display:block;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface)}
 .thumbs img{display:block;width:100%;height:180px;object-fit:cover}
+.et-list{display:flex;flex-direction:column;gap:8px}
+.et-row{display:flex;align-items:center;gap:8px}
+.et-row .n{width:26px;flex:none;font-size:13px;color:var(--text-muted);text-align:right}
+.et-row input{flex:1;min-width:0;height:46px;padding:0 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font-family:inherit;font-size:14px;outline:none}
+.et-row input:focus{border-color:var(--lime)}
+.et-row button{width:36px;height:36px;padding:0;flex:none}
+.lt{list-style:none;margin:6px 0 0;padding:0}
+.lt li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-soft);font-size:14px;color:var(--text-secondary)}
+.lt li:last-child{border-bottom:0}
+.lt .d{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.lt li.ok{color:var(--text-muted)}
+.lt li.ok .d{background:var(--lime);border-color:var(--lime);color:#171617}
+.lt li.now{color:var(--text-primary);font-weight:600}
+.lt li.now .d{border-color:var(--lime);box-shadow:0 0 0 4px var(--accent-glow)}
+.lt li .tag{margin-left:auto;font-size:11px;font-weight:600;color:var(--text-muted)}
+.lt li.now .tag{color:var(--lime)}
 .arqs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .arq{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface)}
 .arq img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg-card)}
@@ -659,6 +675,30 @@ const soma = (lista, cob) => lista.reduce((a, p) => a + (cob ? tot(p)[cob] : tot
 const numProp = p => String(p.id).padStart(4, '0');
 const half = v => Math.round(v * 50) / 100;
 const FORMA = { pix:'Pix', cartao:'Cartão de crédito' };
+/* ---- linha do tempo do projeto ---- */
+const ETAPAS = {
+  identidade_visual:['Briefing e imersão', 'Pesquisa e conceito', 'Criação da marca', 'Apresentação da prévia', 'Ajustes', 'Manual da marca e arquivos finais', 'Entrega'],
+  site_institucional:['Briefing e conteúdo', 'Estrutura das páginas', 'Design das telas', 'Aprovação do layout', 'Desenvolvimento', 'Revisão e ajustes', 'Publicação'],
+  landing_page:['Briefing e copy', 'Design da página', 'Aprovação do layout', 'Desenvolvimento e integrações', 'Revisão e ajustes', 'Publicação'],
+  apresentacao:['Briefing e conteúdo', 'Estrutura e narrativa', 'Design dos slides', 'Revisão e ajustes', 'Entrega'],
+  motion:['Briefing', 'Roteiro e storyboard', 'Animação', 'Revisão e ajustes', 'Entrega'],
+  captacao_video:['Planejamento e roteiro', 'Gravação', 'Organização e entrega dos arquivos'],
+  edicao_video:['Recebimento do material', 'Edição', 'Revisão e ajustes', 'Entrega'],
+  captacao_edicao_video:['Planejamento e roteiro', 'Gravação', 'Edição', 'Revisão e ajustes', 'Entrega'],
+  criativos_social:['Briefing do mês', 'Criação', 'Aprovação', 'Entrega'],
+  prototipo_app:['Briefing', 'Fluxos e wireframes', 'Design das telas', 'Protótipo navegável', 'Revisão e ajustes', 'Entrega'],
+  automacao:['Mapeamento do processo', 'Configuração', 'Testes', 'Entrega e orientação'],
+};
+const ETAPAS_PADRAO = ['Briefing', 'Criação', 'Prévia', 'Ajustes', 'Entrega'];
+function linhaSugerida(p) {
+  const sv = (p.servicos || []).filter(s => conta(s) && s.cobranca !== 'mensal'), lista = sv.length ? sv : (p.servicos || []).filter(conta);
+  if (lista.length <= 1) return [...(ETAPAS[(lista[0] || {}).servico] || ETAPAS_PADRAO)];
+  return ['Início do projeto', ...lista.flatMap(s => (ETAPAS[s.servico] || ETAPAS_PADRAO).filter(e => !/^(Briefing|Entrega|Publicação)/.test(e)).map(e => `${servNome(s.servico)} · ${e}`)), 'Entrega final'];
+}
+const linhaEt = p => Array.isArray(p.linha_etapas) ? p.linha_etapas.map(e => typeof e === 'string' ? e : (e && e.titulo) || '').filter(Boolean) : [];
+const linhaUrl = p => new URL('t?' + encodeURIComponent(p.linha_token), location.href.split('#')[0]).href;
+const novoToken = () => { const a = new Uint8Array(12); crypto.getRandomValues(a); return [...a].map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join(''); };
+const linhaResumo = p => { const n = linhaEt(p).length, a = Math.min(n, p.linha_atual || 0); return !n ? '' : a >= n ? 'Projeto concluído' : `Etapa ${a + 1} de ${n} · ${linhaEt(p)[a]}`; };
 const mesAtual = () => hoje().slice(0, 7);
 /* ---- financeiro ----
    Plano mensal: trabalha no mês (competência) e recebe no dia de cobrança do mês seguinte.
@@ -758,6 +798,7 @@ const CVI = {
   cli:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
   bri:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
   pre:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  proj:'<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>',
   news:'<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>',
 };
 function carrossel({ pend, novos, rasc, ativas, dias }) {
@@ -779,6 +820,8 @@ function carrossel({ pend, novos, rasc, ativas, dias }) {
     ['cli', 'Clientes ativos', '', `<div class="cv-big">${cl.length}</div><div class="cv-sub">${planos.length} ${planos.length === 1 ? 'com plano mensal' : 'com plano mensal'}</div><div style="margin-top:10px">${kv('Novos este mês', novosMes)}${kv('Receita recorrente', money(recorrente(m)))}</div>`, '#/clientes', 'Ver clientes'],
     ['bri', 'Briefings e copys', '', `<div class="cv-big">${novos.length}</div><div class="cv-sub">${novos.length === 1 ? 'briefing novo' : 'briefings novos'}</div><div style="margin-top:10px">${kv('Copys em rascunho', rasc.length)}${kv('Briefings no total', live(S.bri).length)}</div>`, '#/briefings', 'Abrir briefings'],
     ['pre', 'Prévias', '', `<div class="cv-big">${aguard.length}</div><div class="cv-sub">${aguard.length === 1 ? 'aguardando o cliente' : 'aguardando os clientes'}</div><div style="margin-top:10px">${kv('Com ajustes pedidos', ajus.length)}${kv('Aprovadas', pv.filter(v => v.status === 'aprovada').length)}</div>`, '#/previas', 'Abrir prévias'],
+    (() => { const em = live(S.pro).filter(x => x.status === 'fechada' && linhaEt(x).length && (x.linha_atual || 0) < linhaEt(x).length);
+      return ['proj', 'Projetos em andamento', '', `<div class="cv-big">${em.length}</div><div class="cv-sub">${em.length === 1 ? 'projeto com linha do tempo ativa' : em.length ? 'projetos com linha do tempo ativa' : 'Gere a linha do tempo de uma proposta aprovada para acompanhar aqui.'}</div>${em.length ? `<ul class="cv-list">${em.slice(0, 3).map(x => `<li><b>${esc(x.cliente_nome)}</b><small>${esc(linhaResumo(x))}</small></li>`).join('')}</ul>` : ''}`, '#/propostas', 'Ver propostas']; })(),
     ['news', 'Notícias do dia', 'design e marketing', `<div id="cvNews">${newsHtml()}</div>`, '', ''],
   ];
   setTimeout(carregaNoticias, 0); setTimeout(cvRender, 0);
@@ -858,7 +901,7 @@ V.cliente = id => {
     planosBox(c) +
     sec('Briefings', live(S.bri).filter(b => b.cliente_id === c.id).map(b => `<div class="row"><div>${TIPO[b.tipo] || ''}<small>Recebido em ${fdate(b.created_at)}</small></div><span class="hbtns">${badge(STB[b.status] || STB.novo)}<a class="btn btn-secondary btn-sm" href="#/briefing/${b.id}">Abrir</a></span></div>`), 'Nenhum briefing vinculado.') +
     sec('Copys', live(S.cop).filter(x => x.cliente_id === c.id).map(x => `<div class="row"><div>${esc(x.receita)}<small>Versão ${x.versao} · ${fdate(x.updated_at)}</small></div><span class="hbtns">${badge(STC[x.status] || STC.rascunho)}<a class="btn btn-secondary btn-sm" href="#/copy/${x.id}">Abrir</a></span></div>`), 'Nenhuma copy gerada.') +
-    sec('Propostas', live(S.pro).filter(x => x.cliente_id === c.id).map(x => `<div class="row"><div>Proposta nº ${numProp(x)}<small>${x.servicos.map(s => esc(servNome(s.servico))).join(', ')}</small></div><span class="hbtns">${badge(STP[x.status] || STP.ativa)}<a class="btn btn-secondary btn-sm" href="${esc(propUrl(x.slug))}" target="_blank" rel="noopener">Ver</a></span></div>`), 'Nenhuma proposta enviada.') +
+    sec('Propostas', live(S.pro).filter(x => x.cliente_id === c.id).map(x => `<div class="row"><div>Proposta nº ${numProp(x)}<small>${x.servicos.map(s => esc(servNome(s.servico))).join(', ')}${linhaResumo(x) ? ' · ' + esc(linhaResumo(x)) : ''}</small></div><span class="hbtns">${badge(STP[x.status] || STP.ativa)}${x.status === 'fechada' ? `<button class="btn btn-secondary btn-sm" data-a="lin-open" data-id="${x.id}" type="button">Linha do tempo</button>` : ''}<a class="btn btn-secondary btn-sm" href="${esc(propUrl(x.slug))}" target="_blank" rel="noopener">Ver</a></span></div>`), 'Nenhuma proposta enviada.') +
     sec('Prévias', live(S.pre).filter(v => v.cliente_id === c.id).map(v => `<div class="row"><div>${esc(v.titulo)}<small>Rodada ${v.rodada} · ${fdate(v.created_at)}</small></div><span class="hbtns">${badge(STV[v.status])}<a class="btn btn-secondary btn-sm" href="#/previa/${v.id}">Abrir</a></span></div>`), 'Nenhuma prévia enviada.') +
     `<span class="hbtns"><button class="btn btn-secondary" data-a="pro-form" data-cli="${c.id}" type="button">Nova proposta para este cliente</button><button class="btn btn-secondary" data-a="pre-form" data-cli="${c.id}" type="button">Nova prévia para este cliente</button></span>`;
 };
@@ -990,7 +1033,7 @@ V.propostas = () => {
       valorHtml(p),
       `<span class="td-datas"><span class="dt"><span class="k">Criada</span> ${dmy(p.data_proposta)}</span><span class="dt"><span class="k">Válida até</span> ${dmy(p.data_expiracao) || 'sem data'}</span></span>`,
       badge(STP[p.status] || STP.ativa) + (f ? `<br><span style="color:var(--text-muted);font-size:12px;display:inline-block;margin-top:6px">${p.aprovada_em ? 'Aprovada em ' + fdate(p.aprovada_em) : 'Fechada por você'}${p.forma_pagamento ? ' · ' + FORMA[p.forma_pagamento] : ''}</span>` : ''),
-      `<div class="actions-cell">${f ? `<button class="btn btn-sm btn-fechar" data-a="pay-open" data-id="${p.id}" type="button">Pagamento</button>` : ''}${l ? '' : `<a href="${esc(propUrl(p.slug))}" target="_blank" rel="noopener" class="btn btn-solid btn-sm">Ver</a>`}<button class="btn btn-secondary btn-sm" data-a="copy-text" data-text="${esc(propUrl(p.slug))}" data-msg="Link copiado" type="button">Copiar</button><button class="btn btn-secondary btn-sm" data-a="pro-form" data-id="${p.id}" type="button">Editar</button>${f || l ? `<button class="btn btn-secondary btn-sm" data-a="pro-st" data-id="${p.id}" data-v="ativa" type="button">Reabrir</button>` : `<button class="btn btn-sm btn-fechar" data-a="pro-ask" data-id="${p.id}" data-v="fechada" type="button">Fechar</button><button class="btn btn-sm btn-ghost" data-a="pro-ask" data-id="${p.id}" data-v="perdida" type="button">Perder</button>`}<button class="btn btn-danger btn-sm" data-a="trash" data-k="pro" data-id="${p.id}" type="button">Excluir</button></div>`]; }), 'Nenhuma proposta encontrada.') +
+      `<div class="actions-cell">${f ? `<button class="btn btn-sm btn-fechar" data-a="pay-open" data-id="${p.id}" type="button">Pagamento</button><button class="btn btn-sm btn-secondary" data-a="lin-open" data-id="${p.id}" type="button">${linhaEt(p).length ? 'Linha do tempo' : 'Gerar linha do tempo'}</button>` : ''}${l ? '' : `<a href="${esc(propUrl(p.slug))}" target="_blank" rel="noopener" class="btn btn-solid btn-sm">Ver</a>`}<button class="btn btn-secondary btn-sm" data-a="copy-text" data-text="${esc(propUrl(p.slug))}" data-msg="Link copiado" type="button">Copiar</button><button class="btn btn-secondary btn-sm" data-a="pro-form" data-id="${p.id}" type="button">Editar</button>${f || l ? `<button class="btn btn-secondary btn-sm" data-a="pro-st" data-id="${p.id}" data-v="ativa" type="button">Reabrir</button>` : `<button class="btn btn-sm btn-fechar" data-a="pro-ask" data-id="${p.id}" data-v="fechada" type="button">Fechar</button><button class="btn btn-sm btn-ghost" data-a="pro-ask" data-id="${p.id}" data-v="perdida" type="button">Perder</button>`}<button class="btn btn-danger btn-sm" data-a="trash" data-k="pro" data-id="${p.id}" type="button">Excluir</button></div>`]; }), 'Nenhuma proposta encontrada.') +
     (all.length ? `<div style="margin-top:16px;font-size:12px;color:var(--text-muted)">Mostrando ${rows.length} de ${all.length} ${all.length === 1 ? 'proposta' : 'propostas'}</div>` : '');
 };
 V.contratos = () => soon('Contratos', 'Gerados a partir das propostas fechadas, com o seu modelo.');
@@ -1246,6 +1289,16 @@ const A = {
   'avu-del-ask'(d) { const a = S.avu.find(x => x.id === d.id); modal(`<div class="modal-body" style="padding:32px;text-align:center"><h3 style="font-size:20px;margin-bottom:6px">Excluir entrada</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:22px">Excluir a entrada de <strong>${esc(a.nome)}</strong> de ${money(a.valor)}? Ela sai das entradas do mês.</p><div class="hbtns" style="justify-content:center"><button class="btn btn-danger" data-a="avu-del" data-id="${a.id}" type="button">Excluir</button><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button></div></div>`); },
   async 'avu-del'(d) { await db(`central_entradas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); closeModal(); await sync('Entrada excluída'); },
   async 'avu-nf'(d) { await patch('avu', d.id, { nf_em:hoje() }); await sync('Nota marcada como emitida'); },
+  'lin-open'(d) { const p = S.pro.find(x => String(x.id) === String(d.id)); return linhaEt(p).length ? linhaModal(p) : linhaEditor(p, linhaSugerida(p)); },
+  'lin-edit'(d) { const p = S.pro.find(x => String(x.id) === String(d.id)); linhaEditor(p, linhaEt(p)); },
+  'lin-add'() { const l = $('etList'); l.insertAdjacentHTML('beforeend', etRow('', l.children.length)); etNum(); l.lastElementChild.querySelector('input').focus(); },
+  'lin-rm'(d, el) { if ($('etList').children.length > 1) el.closest('.et-row').remove(); etNum(); },
+  'lin-up'(d, el) { const r = el.closest('.et-row'); if (r.previousElementSibling) r.parentNode.insertBefore(r, r.previousElementSibling); etNum(); },
+  'lin-down'(d, el) { const r = el.closest('.et-row'); if (r.nextElementSibling) r.parentNode.insertBefore(r.nextElementSibling, r); etNum(); },
+  async 'lin-step'(d) { const p = S.pro.find(x => String(x.id) === String(d.id)), n = linhaEt(p).length, a = Math.max(0, Math.min(n, (p.linha_atual || 0) + +d.v));
+    await patch('pro', p.id, { linha_atual:a, linha_atualizada_em:new Date().toISOString() }); await sync(+d.v > 0 ? (a >= n ? 'Projeto concluído' : 'Etapa concluída') : 'Voltou uma etapa'); linhaModal(S.pro.find(x => String(x.id) === String(d.id))); },
+  async 'lin-set'(d) { const p = S.pro.find(x => String(x.id) === String(d.id));
+    await patch('pro', p.id, { linha_atual:+d.v, linha_atualizada_em:new Date().toISOString() }); await sync('Etapa atual alterada'); linhaModal(S.pro.find(x => String(x.id) === String(d.id))); },
   'cv-go'(d) { cvGo(+d.v); },
   'cv-to'(d) { const n = document.querySelectorAll('#cvStage .cv-card').length, cur = ((Math.round(cvPos) % n) + n) % n; let o = +d.v - cur; if (o > n / 2) o -= n; if (o < -n / 2) o += n; cvGo(o); },
   'pla-form'(d) { planoForm(d.id && S.pla.find(x => x.id === d.id), d.cli); },
@@ -1282,6 +1335,23 @@ const C = {
     await sync(Object.keys(falta).length ? 'Briefing vinculado e dados do cliente completados' : 'Briefing vinculado');
   },
 };
+const etRow = (t, i) => `<div class="et-row"><span class="n">${i + 1}</span><input name="etapa" maxlength="80" value="${esc(t)}" placeholder="Nome da etapa" aria-label="Etapa ${i + 1}"><button class="btn btn-ghost btn-sm" data-a="lin-up" type="button" aria-label="Subir">↑</button><button class="btn btn-ghost btn-sm" data-a="lin-down" type="button" aria-label="Descer">↓</button><button class="btn btn-ghost btn-sm" data-a="lin-rm" type="button" aria-label="Remover etapa">✕</button></div>`;
+const etNum = () => [...document.querySelectorAll('#etList .et-row')].forEach((r, i) => { r.querySelector('.n').textContent = i + 1; r.querySelector('input').setAttribute('aria-label', 'Etapa ' + (i + 1)); });
+function linhaEditor(p, etapas) {
+  const ed = linhaEt(p).length;
+  modal(mhead(ed ? 'Editar etapas' : 'Gerar linha do tempo', `${esc(p.cliente_nome)} · proposta nº ${numProp(p)}. ${ed ? 'O cliente vê as mudanças no mesmo link.' : 'Sugestão feita a partir dos serviços. Ajuste como quiser.'}`) + `<form data-s="lin-save" data-id="${p.id}"><div class="modal-body">
+    <div class="et-list" id="etList">${etapas.map(etRow).join('')}</div>
+    <button class="btn btn-secondary btn-sm" data-a="lin-add" type="button" style="margin-top:12px">+ Adicionar etapa</button>
+    <p class="hint" style="margin:14px 0 0">O cliente vê cada etapa como concluída, em andamento ou próxima, e o quanto do projeto já foi feito.</p>
+  </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit">${ed ? 'Salvar etapas' : 'Gerar linha do tempo'}</button></div></form>`);
+}
+function linhaModal(p) {
+  const et = linhaEt(p), n = et.length, a = Math.min(n, p.linha_atual || 0), fim = a >= n;
+  modal(mhead('Linha do tempo', `${esc(p.cliente_nome)} · ${fim ? 'projeto concluído' : `etapa ${a + 1} de ${n}`}${p.linha_atualizada_em ? ' · atualizada em ' + fdate(p.linha_atualizada_em) : ''}`) + `<div class="modal-body">
+    <div class="form-group"><label>Link para o cliente</label><div style="display:flex;gap:8px;flex-wrap:wrap"><code style="flex:1;min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:13px;overflow-wrap:anywhere">${esc(linhaUrl(p))}</code><button class="btn btn-primary btn-sm" data-a="copy-text" data-text="${esc(linhaUrl(p))}" data-msg="Link copiado" type="button">Copiar link</button><a class="btn btn-ghost btn-sm" href="${esc(linhaUrl(p))}" target="_blank" rel="noopener">Ver como o cliente</a></div></div>
+    <ol class="lt">${et.map((t, i) => { const c = i < a ? 'ok' : i === a ? 'now' : ''; return `<li class="${c}"><span class="d">${c === 'ok' ? '✓' : ''}</span><span>${esc(t)}</span>${c === 'now' ? '<span class="tag">Em andamento</span>' : c === 'ok' ? '<span class="tag">Concluída</span>' : `<button class="btn btn-ghost btn-sm" style="margin-left:auto" data-a="lin-set" data-id="${p.id}" data-v="${i}" type="button">Ir para esta</button>`}</li>`; }).join('')}</ol>
+  </div><div class="modal-foot" style="flex-wrap:wrap"><button class="btn btn-secondary" data-a="lin-edit" data-id="${p.id}" type="button">Editar etapas</button>${a > 0 ? `<button class="btn btn-secondary" data-a="lin-step" data-id="${p.id}" data-v="-1" type="button">Voltar uma etapa</button>` : ''}${fim ? '' : `<button class="btn btn-primary" data-a="lin-step" data-id="${p.id}" data-v="1" type="button">${a === n - 1 ? 'Concluir projeto' : 'Concluir etapa atual'}</button>`}</div>`);
+}
 async function salvaFech(pl, m, body) {
   const f = fechDe(pl, m), qtd = 'qtd' in body ? body.qtd : f ? f.qtd : (pacote(pl) ? pl.qtd_inclusa : null);
   const full = { ...body, qtd, valor:valorPlano(pl, qtd) };
@@ -1356,6 +1426,14 @@ const F = {
     closeModal(); await sync('Plano salvo');
   },
   async 'pla-enc'(form) { const m = $('pl_fim').value; if (!/^\d{4}-\d{2}$/.test(m)) return toast('Informe o último mês trabalhado.'); await patch('pla', form.dataset.id, { encerrado_em:fimMes(m) }); closeModal(); await sync('Plano encerrado'); },
+  async 'lin-save'(form) {
+    const p = S.pro.find(x => String(x.id) === form.dataset.id), et = [...form.querySelectorAll('[name=etapa]')].map(i => i.value.trim().slice(0, 80)).filter(Boolean);
+    if (!et.length) return toast('Coloque ao menos uma etapa.');
+    const body = { linha_etapas:et, linha_atual:Math.min(p.linha_atual || 0, et.length), linha_atualizada_em:new Date().toISOString() };
+    if (!p.linha_token) body.linha_token = novoToken();
+    await patch('pro', p.id, body); await sync(p.linha_token ? 'Etapas salvas' : 'Linha do tempo criada');
+    linhaModal(S.pro.find(x => String(x.id) === form.dataset.id));
+  },
   async 'avu-save'(form) {
     const nome = $('a_nome').value.trim(), valor = parseVal($('a_val').value), dia = $('a_dia').value, a = form.dataset.id && S.avu.find(x => x.id === form.dataset.id);
     if (!nome || !(valor > 0)) return toast('Informe quem pagou e o valor.');

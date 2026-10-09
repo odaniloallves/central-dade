@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Acompanhe seu projeto | dade.design</title>
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#171617">
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/proposta.css?v=93993e44">
+<style>
+body{background:var(--ink-900);color:var(--white);min-height:100vh}
+.pg{max-width:640px;margin:0 auto;padding:32px 20px 72px}
+.pg.wide{max-width:980px}
+.pg-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:44px}
+.pg-top img{height:24px;width:auto}
+.pg-top a{font-size:13px;color:var(--ink-300)}
+.pg-top a:hover{color:var(--white)}
+.pg h1{font-size:clamp(28px,6vw,40px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:16px 0 10px}
+.pg .lede{color:var(--ink-300);font-size:16px;margin-bottom:28px}
+.box{border:1px solid var(--hairline-dark);border-radius:var(--r-lg);padding:22px 24px;margin-bottom:14px}
+.box h2{font-size:13px;font-weight:500;color:var(--ink-400);margin-bottom:12px}
+.ln{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--hairline-dark);font-size:15px}
+.ln:last-child{border-bottom:none;padding-bottom:0}
+.ln span:last-child{white-space:nowrap;font-weight:600}
+.ln small{color:var(--ink-400);font-weight:400}
+.opt{display:block;width:100%;text-align:left;background:transparent;color:var(--white);font-family:var(--font);border:1px solid var(--hairline-dark);border-radius:var(--r-lg);padding:20px 22px;margin-bottom:12px;cursor:pointer;transition:border-color var(--t-fast) var(--ease-soft),background var(--t-fast) var(--ease-soft)}
+.opt:hover{border-color:rgba(255,255,255,.35)}
+.opt[aria-checked=true]{border-color:var(--lime);background:rgba(193,253,66,.06)}
+.opt b{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
+.opt b::before{content:"";width:16px;height:16px;border-radius:50%;border:1.5px solid var(--ink-400);flex:none}
+.opt[aria-checked=true] b::before{border-color:var(--lime);background:radial-gradient(var(--lime) 0 45%,transparent 50%)}
+.opt.sq b::before{border-radius:4px}
+.opt.sq[aria-checked=true] b::before{background:var(--lime)}
+.opt span{display:block;font-size:14px;color:var(--ink-300);margin:6px 0 0 26px;line-height:1.5}
+.opt span strong{color:var(--white)}
+label.fl{display:block;font-size:13px;color:var(--ink-300);margin:22px 0 8px}
+.inp{width:100%;min-height:54px;padding:14px 18px;background:var(--surface-elevated);border:1px solid var(--hairline-dark);border-radius:var(--r-md);color:var(--white);font-family:var(--font);font-size:16px;outline:none}
+textarea.inp{resize:vertical;line-height:1.5}
+.inp:focus{border-color:var(--lime);box-shadow:0 0 0 3px rgba(193,253,66,.2)}
+.inp::placeholder{color:var(--ink-500)}
+.err{color:#FF8F8F;font-size:14px;margin-top:12px;min-height:20px}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.acts .btn{flex:1 1 220px}
+.btn:disabled{opacity:.5;cursor:wait;transform:none}
+.key{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface-elevated);border-radius:var(--r-md);padding:14px 16px;margin-top:10px}
+.key div small{display:block;font-size:12px;color:var(--ink-400)}
+.key div strong{font-size:17px;letter-spacing:.01em;overflow-wrap:anywhere}
+.cp{flex:none;height:38px;padding:0 16px;border-radius:var(--r-full);border:1px solid rgba(255,255,255,.35);background:transparent;color:var(--white);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer}
+.cp:hover{background:var(--white);color:var(--ink-900)}
+.obs{font-size:14px;color:var(--ink-300);line-height:1.6;margin-top:14px}
+.obs strong{color:var(--white)}
+.wait{padding:120px 0;text-align:center;color:var(--ink-400)}
+.conds{max-height:260px;overflow-y:auto;padding-right:8px}
+.conds h3{font-size:14px;font-weight:600;margin:14px 0 4px}
+.conds h3:first-child{margin-top:0}
+.conds p{font-size:14px;color:var(--ink-300);line-height:1.55}
+.aceite{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.45;cursor:pointer;margin-top:18px}
+.priv{font-size:12px;color:var(--ink-400);margin-top:12px;line-height:1.5}
+.priv a{color:var(--ink-200);text-decoration:underline}
+.aceite input{width:20px;height:20px;margin-top:1px;accent-color:var(--lime);flex:none}
+
+.resp{max-width:640px}
+.prog-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:8px 0 10px;font-size:14px;color:var(--ink-300)}
+.prog-top b{font-size:28px;color:var(--white);font-weight:700;letter-spacing:-.02em}
+.barra{height:8px;border-radius:20px;background:var(--surface-elevated);overflow:hidden;margin-bottom:36px}
+.barra div{height:100%;background:var(--lime);border-radius:20px;transition:width .6s}
+.tl{list-style:none;position:relative;margin:0;padding:0}
+.tl li{position:relative;padding:0 0 30px 46px}
+.tl li:last-child{padding-bottom:0}
+.tl li::before{content:"";position:absolute;left:13px;top:30px;bottom:-2px;width:2px;background:var(--hairline-dark)}
+.tl li:last-child::before{display:none}
+.tl li.ok::before{background:var(--lime)}
+.tl .dot{position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;border:2px solid var(--hairline-dark);background:var(--ink-900,#171617);display:flex;align-items:center;justify-content:center}
+.tl li.ok .dot{background:var(--lime);border-color:var(--lime)}
+.tl li.ok .dot svg{width:14px;height:14px;color:#171617}
+.tl li.now .dot{border-color:var(--lime)}
+.tl li.now .dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--lime);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+.tl .t{font-size:17px;font-weight:600;color:var(--ink-300);line-height:1.35;padding-top:2px}
+.tl li.ok .t{color:var(--ink-200)}
+.tl li.now .t{color:var(--white);font-size:19px}
+.tl .s{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--hairline-dark);color:var(--ink-400)}
+.tl li.ok .s{color:var(--lime);border-color:rgba(193,253,66,.35)}
+.tl li.now .s{background:var(--lime);border-color:var(--lime);color:#171617}
+.fim{margin-top:36px;padding:22px 24px;border:1px solid var(--lime);border-radius:var(--r-lg);font-size:15px;color:var(--ink-200)}
+.fim b{color:var(--white)}
+.ajuda{margin-top:40px;font-size:14px;color:var(--ink-300)}
+.ajuda a{color:var(--white);text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.tl li.now .dot::after{animation:none}}
+</style>
+</head>
+<body>
+<main class="pg">
+  <div class="pg-top"><img src="assets/img/dade/logo-dade-colorido.png" alt="dade"><span style="font-size:13px;color:var(--ink-300)">Linha do tempo do projeto</span></div>
+  <div id="root"><div class="wait">Carregando…</div></div>
+  <p class="priv" style="margin-top:48px"><a href="privacidade.html" target="_blank" rel="noopener">Aviso de privacidade</a></p>
+</main>
+<script src="assets/dade.js?v=16a15195"></script>
+<script>
+const SB='https://hgkxybswazgcpqpksvkf.supabase.co',KEY='sb_publishable_4-plrhdRN1mZA6uDxnDmKA_muzq8QUu',D=window.DADE;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const root=document.getElementById('root'),token=new URLSearchParams(location.search).get('t')||'';
+const rpc=async(fn,body)=>{const r=await fetch(SB+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('erro');return r.json()};
+const OK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>';
+function aviso(t,p){root.innerHTML=`<div class="resp"><span class="eyebrow">dade.design</span><h1>${t}</h1><p class="lede">${p}</p></div>`}
+function tela(l){
+  const et=(l.etapas||[]).map(e=>typeof e==='string'?e:(e&&e.titulo)||'').filter(Boolean),n=et.length,at=Math.max(0,Math.min(n,Number(l.atual)||0)),fim=at>=n,pct=n?Math.round(at/n*100):0;
+  const servs=(l.servicos||[]).map(s=>window.dadeServNome?window.dadeServNome(s):s);
+  document.title='Seu projeto | dade.design';
+  root.innerHTML=`<div class="resp"><span class="eyebrow">${esc(l.cliente_nome)}</span><h1>${fim?'Projeto concluído':'Acompanhe o seu projeto'}</h1>
+    <p class="lede">${servs.length?esc(servs.join(' · '))+'. ':''}${fim?'Todas as etapas foram concluídas. Obrigado pela confiança!':'Aqui você vê em que etapa o projeto está. A página se atualiza sempre que a dade avança.'}</p>
+    <div class="prog-top"><span>${fim?'Todas as etapas concluídas':`Etapa ${at+1} de ${n}`}</span><b>${pct}%</b></div><div class="barra"><div style="width:${pct}%"></div></div>
+    <ol class="tl">${et.map((t,i)=>{const c=i<at?'ok':i===at?'now':'';return `<li class="${c}"${c==='now'?' aria-current="step"':''}><span class="dot" aria-hidden="true">${c==='ok'?OK:''}</span><div class="t">${esc(t)}</div><span class="s">${c==='ok'?'Concluída':c==='now'?'Em andamento':'Próxima'}</span></li>`}).join('')}</ol>
+    ${l.atualizada_em?`<p class="ajuda" style="margin-top:28px">Atualizado em ${new Date(l.atualizada_em).toLocaleDateString('pt-BR')}.</p>`:''}
+    <p class="ajuda">Alguma dúvida? <a href="https://wa.me/${D.whatsapp}?text=${encodeURIComponent('Olá! Estou acompanhando o meu projeto e queria falar sobre ele.')}" target="_blank" rel="noopener">Fale com a dade no WhatsApp</a>.</p></div>`;
+}
+(async()=>{
+  let l=null;
+  try{l=token?await rpc('central_linha_publica',{p_token:token}):null}catch(e){return aviso('Não foi possível abrir','Confira a sua conexão e recarregue a página.')}
+  if(!l)return aviso('Linha do tempo não encontrada','Confira o link que você recebeu ou fale com a dade.design.');
+  tela(l);
+})();
+</script>
+</body></html>
