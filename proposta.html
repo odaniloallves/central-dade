@@ -23,6 +23,12 @@
 .prazos .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--ink-500);margin-bottom:10px}
 .prazos .pz{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--hairline-light);font-size:16px}
 .prazos p{font-size:14px;color:var(--ink-500);margin-top:14px}
+.brk{display:flex;flex-direction:column;margin-top:28px;border-top:1px solid var(--hairline-dark)}
+.brk .ln{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:14px 0;border-bottom:1px solid var(--hairline-dark);font-size:16px;color:var(--ink-200)}
+.brk .ln b{color:var(--white);font-weight:600;white-space:nowrap}
+.brk .ln small{font-size:.8em;color:var(--ink-400);font-weight:500}
+.brk .ln.tot{border-bottom:0;padding-top:16px;font-size:17px;color:var(--white);font-weight:600}
+.brk .ln.tot b{color:var(--lime);font-size:20px}
 .clients-row{display:flex;align-items:center;flex-wrap:wrap;gap:36px 56px}
 .clients-row img{height:34px;width:auto;filter:invert(1);opacity:.82}
 @media (max-width:860px){.clients-row{gap:28px 36px}.clients-row img{height:26px}}</style>
@@ -241,7 +247,7 @@ function pagina(pr){
           <div class="val" style="margin-top:14px">${headline}</div>
           ${headSub?`<div class="lbl" style="margin-top:12px;font-size:18px;color:var(--ink-200)">${headSub}</div>`:""}
         </div>
-        <div class="items">${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}</div>
+        ${svs.filter(conta).length>1?`<div class="brk">${svs.filter(conta).map(s=>`<div class="ln"><span>${esc(s.nome)}</span><b>${money(s.valor)}${s.cobranca==="mensal"?" <small>/mês</small>":""}</b></div>`).join("")}${tu>0?`<div class="ln tot"><span>${tm>0?"Total do projeto":"Total"}</span><b>${money(tu)}</b></div>`:""}${tm>0?`<div class="ln tot"><span>${tu>0?"Total mensal":"Total"}</span><b>${money(tm)} <small>/mês</small></b></div>`:""}</div>`:`<div class="items">${svs.filter(conta).map(s=>`<span>${esc(s.nome)}</span>`).join("")}</div>`}
       </div>
       <div class="pay">
         ${tu>0?`
