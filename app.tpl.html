@@ -663,17 +663,20 @@ V.copy = id => {
 
 const soon = (t, s) => head(t, s) + '<div class="table-wrapper"><div class="empty-state"><p>Esta área entra na próxima etapa da central.</p></div></div>';
 const PF = { busca:'', servico:'', status:'', cobranca:'', mes:'' };
+let proVis = 'abertas';
+const VIS = { abertas:['Em aberto', p => p.status === 'ativa' || p.status === 'fechada'], perdida:['Perdidas', p => p.status === 'perdida'], expirada:['Expiradas', p => p.status === 'expirada'], todas:['Todas', () => true] };
 V.propostas = () => {
   const all = live(S.pro), st = s => all.filter(p => p.status === s);
   const meses = [...new Set(all.map(p => (p.data_proposta || '').slice(0, 7)).filter(Boolean))].sort().reverse(), nm = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const rows = all.filter(p => { const t = tot(p);
-    return (!PF.busca || p.cliente_nome.toLowerCase().includes(PF.busca.toLowerCase())) && (!PF.status || p.status === PF.status) && (!PF.mes || (p.data_proposta || '').startsWith(PF.mes)) && (!PF.servico || p.servicos.some(s => s.servico === PF.servico)) &&
+    return (PF.status || VIS[proVis][1](p)) && (!PF.busca || p.cliente_nome.toLowerCase().includes(PF.busca.toLowerCase())) && (!PF.status || p.status === PF.status) && (!PF.mes || (p.data_proposta || '').startsWith(PF.mes)) && (!PF.servico || p.servicos.some(s => s.servico === PF.servico)) &&
       (!PF.cobranca || (PF.cobranca === 'mensal' ? t.m > 0 : PF.cobranca === 'unico' ? t.u > 0 : t.m > 0 && t.u > 0)); });
   const opt = (cur, pairs) => pairs.map(([k, v]) => `<option value="${esc(k)}" ${cur === k ? 'selected' : ''}>${esc(v)}</option>`).join('');
   const filtrando = Object.values(PF).some(Boolean);
   return head('Propostas', 'Acompanhe tudo o que foi enviado e o que já fechou.', '<button class="btn btn-primary" data-a="pro-form" type="button">Nova proposta</button>') +
     `<div class="stats-block"><div class="stats-caption">Números</div><div class="stats-row values">${stat('Receita mensal', money(soma([...st('ativa'), ...st('fechada')], 'm')), 'purple') + stat('Total gerado', money(soma(all))) + stat('Valor ativo', money(soma(st('ativa'))), 'yellow') + stat('Valor concluído', money(soma(st('fechada'))), 'green') + stat('Valor perdido', money(soma(st('perdida'))), 'muted')}</div></div>
     <div class="stats-block"><div class="stats-caption">Propostas</div><div class="stats-row counts">${stat('Total', all.length) + stat('Ativas', st('ativa').length, 'yellow') + stat('Expiradas', st('expirada').length, 'red') + stat('Concluídas', st('fechada').length, 'green') + stat('Perdidas', st('perdida').length, 'muted')}</div></div>
+    <div class="pills">${Object.entries(VIS).map(([k, [l, f]]) => `<button class="pillf ${proVis === k && !PF.status ? 'on' : ''}" data-a="pro-vis" data-v="${k}" type="button">${l} (${all.filter(f).length})</button>`).join('')}</div>
     <form class="filters-bar" data-s="pro-filter">
       <input type="text" name="busca" placeholder="Buscar cliente..." value="${esc(PF.busca)}" aria-label="Buscar cliente">
       <select name="servico" aria-label="Serviço"><option value="">Todos os serviços</option>${opt(PF.servico, Object.entries(CAT).map(([k, s]) => [k, s.nome]))}</select>
@@ -688,7 +691,7 @@ V.propostas = () => {
       valorHtml(p),
       `<span class="td-datas"><span class="dt"><span class="k">Criada</span> ${dmy(p.data_proposta)}</span><span class="dt"><span class="k">Válida até</span> ${dmy(p.data_expiracao) || 'sem data'}</span></span>`,
       badge(STP[p.status] || STP.ativa) + (f ? `<br><span style="color:var(--text-muted);font-size:12px;display:inline-block;margin-top:6px">${p.aprovada_em ? 'Aprovada em ' + fdate(p.aprovada_em) : 'Fechada por você'}${p.forma_pagamento ? ' · ' + FORMA[p.forma_pagamento] : ''}</span><br>${pagTag(p)}` : ''),
-      `<div class="actions-cell">${f ? `<button class="btn btn-sm btn-fechar" data-a="pay-open" data-id="${p.id}" type="button">Pagamento</button><button class="btn btn-sm btn-secondary" data-a="lin-open" data-id="${p.id}" type="button">${linhaEt(p).length ? 'Linha do tempo' : 'Gerar linha do tempo'}</button>` : ''}${l ? '' : `<a href="${esc(propUrl(p.slug))}" target="_blank" rel="noopener" class="btn btn-solid btn-sm">Ver</a>`}<button class="btn btn-secondary btn-sm" data-a="copy-text" data-text="${esc(propUrl(p.slug))}" data-msg="Link copiado" type="button">Copiar</button><button class="btn btn-secondary btn-sm" data-a="pro-form" data-id="${p.id}" type="button">Editar</button>${f || l ? `<button class="btn btn-secondary btn-sm" data-a="pro-st" data-id="${p.id}" data-v="ativa" type="button">Reabrir</button>` : `<button class="btn btn-sm btn-fechar" data-a="pro-ask" data-id="${p.id}" data-v="fechada" type="button">Fechar</button><button class="btn btn-sm btn-ghost" data-a="pro-ask" data-id="${p.id}" data-v="perdida" type="button">Perder</button>`}<button class="btn btn-danger btn-sm" data-a="trash" data-k="pro" data-id="${p.id}" type="button">Excluir</button></div>`]; }), 'Nenhuma proposta encontrada.') +
+      `<div class="actions-cell">${f ? `<button class="btn btn-sm btn-fechar" data-a="pay-open" data-id="${p.id}" type="button">Pagamento</button><button class="btn btn-sm btn-secondary" data-a="lin-open" data-id="${p.id}" type="button">${linhaEt(p).length ? 'Linha do tempo' : 'Gerar linha do tempo'}</button>` : ''}${l ? '' : `<a href="${esc(propUrl(p.slug))}" target="_blank" rel="noopener" class="btn btn-solid btn-sm">Ver</a>`}<button class="btn btn-secondary btn-sm" data-a="copy-text" data-text="${esc(propUrl(p.slug))}" data-msg="Link copiado" type="button">Copiar</button><button class="btn btn-secondary btn-sm" data-a="pro-form" data-id="${p.id}" type="button">Editar</button>${f || l ? `<button class="btn btn-secondary btn-sm" data-a="pro-st" data-id="${p.id}" data-v="ativa" type="button">Reabrir</button>` : `<button class="btn btn-sm btn-fechar" data-a="pro-ask" data-id="${p.id}" data-v="fechada" type="button">Fechar</button><button class="btn btn-sm btn-ghost" data-a="pro-ask" data-id="${p.id}" data-v="perdida" type="button">Perder</button>`}<button class="btn btn-danger btn-sm" data-a="trash" data-k="pro" data-id="${p.id}" type="button">Excluir</button></div>`]; }), PF.status || proVis === 'todas' ? 'Nenhuma proposta encontrada.' : proVis === 'abertas' ? 'Nenhuma proposta em aberto. As perdidas e expiradas ficam nas abas ao lado.' : `Nenhuma proposta ${VIS[proVis][0].toLowerCase().replace(/s$/, '')}.`) +
     (all.length ? `<div style="margin-top:16px;font-size:12px;color:var(--text-muted)">Mostrando ${rows.length} de ${all.length} ${all.length === 1 ? 'proposta' : 'propostas'}</div>` : '');
 };
 V.contratos = () => soon('Contratos', 'Gerados a partir das propostas fechadas, com o seu modelo.');
@@ -967,6 +970,7 @@ const A = {
   async 'pla-reativar'(d) { await patch('pla', d.id, { encerrado_em:null }); await sync('Plano reativado'); },
   async 'fec-set'(d) { const pl = S.pla.find(x => x.id === d.pl), f = fechDe(pl, d.m); await salvaFech(pl, d.m, { [d.v]:f && f[d.v] ? null : hoje() }); await sync(d.v === 'pago_em' ? (f && f.pago_em ? 'Recebimento desfeito' : 'Mensalidade recebida') : (f && f.nf_em ? 'Nota desmarcada' : 'Nota marcada como emitida')); },
   'pro-clear'() { Object.keys(PF).forEach(k => PF[k] = ''); route(); },
+  'pro-vis'(d) { proVis = d.v; PF.status = ''; route(); },
   'svc-add'() { $('svcList').insertAdjacentHTML('beforeend', svcRow({ servico:Object.keys(CAT)[0], cobranca:Object.values(CAT)[0].cobranca })); syncPay(); },
   'svc-rm'(d, el) { if ($('svcList').children.length > 1) el.closest('.svc-row').remove(); syncPay(); },
   'pay-open'(d) { payModal(S.pro.find(p => String(p.id) === String(d.id))); },
