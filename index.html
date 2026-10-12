@@ -422,6 +422,32 @@ td[data-label="Serviços"]{min-width:150px}
 .pz .it .ped{background:rgba(245,165,36,.1);border-radius:8px;padding:8px 10px;color:var(--text-primary);line-height:1.4}
 .pz .it .bts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
 .st-ok{color:var(--lime);font-weight:600}.st-alt{color:var(--amber);font-weight:600}
+.pin-box{max-width:360px;margin:40px auto;text-align:center}
+.pin-box h1{font-size:26px;margin:14px 0 6px}
+.pin-box p{font-size:14px;color:var(--text-secondary)}
+.pin-box .ic{width:56px;height:56px;border-radius:50%;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:var(--lime)}
+.pin-box .ic svg{width:24px;height:24px}
+.pin-in{display:flex;gap:10px;justify-content:center;margin:24px 0 10px}
+.pin-in input{width:56px;height:64px;text-align:center;font-size:26px;font-weight:700;background:var(--bg-input);border:1px solid var(--border);border-radius:14px;color:var(--text-primary);font-family:inherit;outline:none}
+.pin-in input:focus{border-color:var(--lime);box-shadow:0 0 0 3px var(--accent-glow)}
+.pin-err{color:var(--red,#ff6b6b);font-size:13px;min-height:20px}
+.ct{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border-soft)}
+.ct:last-child{border-bottom:0}
+.ct input[type=checkbox]{width:24px;height:24px;accent-color:var(--lime);flex:none;cursor:pointer}
+.ct .ds{flex:1;min-width:0}
+.ct .ds b{display:block;font-size:15px;font-weight:600;color:var(--text-primary);overflow-wrap:anywhere}
+.ct .ds small{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:4px;font-size:12px;color:var(--text-muted)}
+.ct .vl{font-size:16px;font-weight:700;color:var(--text-primary);white-space:nowrap;text-align:right}
+.ct .ch{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.ch.pago{background:rgba(193,253,66,.14);color:var(--lime)}
+.ch.vencida{background:rgba(255,107,107,.14);color:#ff6b6b}
+.ch.apagar{background:rgba(245,165,36,.14);color:var(--amber)}
+.ct.ok .ds b,.ct.ok .vl{color:var(--text-muted);text-decoration:line-through;text-decoration-thickness:1px}
+.ct .acs{display:flex;gap:4px;flex:none}
+.ct-tot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 4px 4px;margin-top:4px;border-top:1px solid var(--border);font-size:15px;font-weight:600;color:var(--text-primary)}
+.ct-tot b{color:var(--lime);font-size:18px}
+.tag-rec{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text-secondary)}
+@media (max-width:700px){.ct{flex-wrap:wrap}.ct .ds{flex:1 1 calc(100% - 140px)}.ct .acs{width:100%;justify-content:flex-end}}
 .arqs{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .arq{display:flex;align-items:center;gap:12px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface)}
 .arq img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg-card)}
@@ -633,7 +659,7 @@ const addDias = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.get
 const hoje = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 async function loadAll() {
   await db(`central_propostas?status=eq.ativa&deleted_at=is.null&data_expiracao=lt.${hoje()}`, 'PATCH', { status:'expirada' });
-  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu, ent, pec] = await Promise.all([
+  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu, ent, pec, pco, pla2, ppin] = await Promise.all([
     db('central_clientes?select=*&order=nome.asc'),
     db('central_briefings?select=*&order=created_at.desc'),
     db('central_copys?select=*&order=updated_at.desc'),
@@ -648,9 +674,12 @@ async function loadAll() {
     db('central_entradas?select=*&order=recebido_em.desc'),
     db('central_entregas?select=*&order=created_at.desc'),
     db('central_entrega_pecas?select=*&order=ordem.asc,created_at.asc'),
+    db('central_pessoal_contas?select=*&order=created_at.asc'),
+    db('central_pessoal_lanc?select=*&order=mes.desc'),
+    db('central_config?select=*&chave=eq.pessoal_pin'),
   ]);
   S.pla = pla; S.fec = fec; S.imp = (imp[0] && imp[0].valor) || { tipo:'percentual', valor:null };
-  S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0]; S.avu = avu; S.ent = ent; S.pec = pec;
+  S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0]; S.avu = avu; S.ent = ent; S.pec = pec; S.pco = pco; S.plc = pla2; S.pin = (ppin[0] && ppin[0].valor) || {}; S.pinRow = !!ppin[0];
   S.tar = tar;
   S.pre = pre; S.cond = (cfg[0] && cfg[0].valor && cfg[0].valor.itens) || [];
   pro.forEach(p => (p.servicos = p.servicos || []).sort((a, b) => a.ordem - b.ordem || a.id - b.id));
@@ -679,7 +708,7 @@ async function planosDasPropostas() {
     S.pla = [...S.pla, ...(novos || [])];
   } catch (e) { console.error(e); }
 }
-const TAB = { ent:'central_entregas', pec:'central_entrega_pecas', avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
+const TAB = { pco:'central_pessoal_contas', plc:'central_pessoal_lanc', ent:'central_entregas', pec:'central_entrega_pecas', avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
 const patch = (k, id, body) => db(`${TAB[k]}?id=eq.${encodeURIComponent(id)}`, 'PATCH', body);
 
 /* ============ DOMÍNIO ============ */
@@ -803,6 +832,8 @@ const NAV = [
   ['-', 'Comercial'],
   ['propostas', 'Propostas', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'],
   ['financeiro', 'Financeiro', '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
+  ['-', 'Pessoal'],
+  ['pessoal', 'Minhas contas', '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'],
   ['-', 'Sistema'],
   ['lixeira', 'Lixeira', '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'],
 ];
@@ -1199,6 +1230,62 @@ V.entrega = cid => {
           <div class="bts"><label class="btn btn-secondary btn-sm" style="cursor:pointer">Trocar arquivo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/quicktime,application/pdf" data-c="pec-trocar" data-id="${x.id}" hidden></label><button class="btn btn-ghost btn-sm" data-a="pec-del" data-id="${x.id}" type="button">Remover</button></div></div></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Sem peças nesta semana.</p>'}</div></div>`; }).join('') ||
       `<div class="table-wrapper"><div class="empty-state"><p>Nenhuma semana no ar para ${esc(c.nome)}.</p></div></div>`);
 };
+/* ---- área pessoal: contas do mês, protegida por PIN ---- */
+let pesAte = 0;
+const pesAberto = () => Date.now() < pesAte;
+const pesToque = () => { if (pesAberto()) pesAte = Date.now() + 5 * 60 * 1000; };
+['click', 'keydown', 'pointermove'].forEach(ev => document.addEventListener(ev, () => { if (location.hash.startsWith('#/pessoal')) pesToque(); }, { passive:true }));
+addEventListener('hashchange', () => { if (!location.hash.startsWith('#/pessoal')) pesAte = 0; });
+setInterval(() => { if (location.hash.startsWith('#/pessoal') && pesAte && !pesAberto()) { pesAte = 0; route(); } }, 15000);
+async function hashPin(pin, salt) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pin)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+const LOCK = '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+const pinTela = () => { const novo = !S.pin.hash;
+  return `<div class="pin-box"><span class="ic">${ic(LOCK)}</span><h1>${novo ? 'Crie o seu PIN' : 'Minhas contas'}</h1><p>${novo ? 'Escolha 4 números para proteger a sua área pessoal. Ela trava sozinha depois de 5 minutos parada.' : 'Digite o seu PIN para abrir.'}</p>
+    <form data-s="pin-ok"><div class="pin-in">${[0, 1, 2, 3].map(i => `<input type="password" inputmode="numeric" maxlength="1" autocomplete="off" data-pin="${i}" aria-label="Número ${i + 1} do PIN">`).join('')}</div>
+    ${novo ? `<p style="margin-top:4px">Repita o PIN</p><div class="pin-in">${[0, 1, 2, 3].map(i => `<input type="password" inputmode="numeric" maxlength="1" autocomplete="off" data-pin2="${i}" aria-label="Repita o número ${i + 1}">`).join('')}</div>` : ''}
+    <p class="pin-err" id="pinErr" role="alert"></p><button class="btn btn-primary" type="submit" style="width:100%">${novo ? 'Criar PIN e abrir' : 'Abrir'}</button></form>
+    ${novo ? '' : '<button class="btn btn-ghost btn-sm" data-a="pin-esqueci" type="button" style="margin-top:14px">Esqueci o PIN</button>'}</div>`; };
+const DIFM = (a, b) => (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5, 7) - +a.slice(5, 7));
+const contaVale = (c, m) => c.inicio <= m && (!c.fim || m <= c.fim) && (c.tipo !== 'parcelada' || DIFM(c.inicio, m) + 1 <= (c.parcela_total || 1));
+/* cria os lançamentos do mês para as contas que repetem (fixas, que mudam de valor e parceladas) */
+let gerando = {};
+async function gerarMes(m) {
+  if (gerando[m]) return; gerando[m] = true;
+  const falta = S.pco.filter(c => contaVale(c, m) && !S.plc.some(l => l.conta_id === c.id && l.mes === m));
+  if (!falta.length) return;
+  const novos = falta.map(c => { const ant = S.plc.filter(l => l.conta_id === c.id && l.mes < m).sort((a, b) => b.mes.localeCompare(a.mes))[0];
+    return { conta_id:c.id, mes:m, descricao:c.descricao, valor:c.tipo === 'variavel' && ant ? +ant.valor : +c.valor, dia_venc:c.dia_venc, codigo:c.codigo || null, parcela:c.tipo === 'parcelada' ? DIFM(c.inicio, m) + 1 : null, parcela_total:c.tipo === 'parcelada' ? c.parcela_total : null }; });
+  try { const r = await db('central_pessoal_lanc', 'POST', novos); S.plc = [...S.plc, ...(r || [])]; if (location.hash.startsWith('#/pessoal')) route(); } catch (e) { console.error(e); gerando[m] = false; }
+}
+const statusConta = (l, m) => { if (l.pago_em) return ['pago', 'Pago']; const h = hoje(), dv = l.dia_venc ? diaCobr({ dia_cobranca:l.dia_venc }, m) : null; return dv && dv < h ? ['vencida', 'Vencida'] : ['apagar', 'A pagar']; };
+const TIPOC = { fixa:'Todo mês', variavel:'Todo mês, valor muda', parcelada:'Parcelada' };
+V.pessoal = arg => {
+  if (!pesAberto()) return pinTela();
+  const m = /^\d{4}-\d{2}$/.test(arg || '') ? arg : mesAtual(); gerarMes(m);
+  const ls = S.plc.filter(l => l.mes === m && !l.oculto).sort((a, b) => (a.dia_venc || 99) - (b.dia_venc || 99) || a.descricao.localeCompare(b.descricao));
+  const tot = ls.reduce((a, l) => a + +l.valor, 0), pago = ls.filter(l => l.pago_em).reduce((a, l) => a + +l.valor, 0), venc = ls.filter(l => statusConta(l, m)[0] === 'vencida');
+  const prox = m === mesAtual() ? ls.filter(l => !l.pago_em && l.dia_venc && statusConta(l, m)[0] === 'apagar').slice(0, 3) : [];
+  const g4 = 'style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"';
+  return head(`Contas de ${mesCurto(m)}`, 'A sua planilha do mês: marque o que já pagou e veja o que falta.', `<span class="hbtns"><button class="btn btn-secondary" data-a="pin-travar" type="button">Travar</button><button class="btn btn-primary" data-a="pc-form" data-m="${m}" type="button">+ Nova conta</button></span>`) +
+    `<div class="fin-nav"><a class="btn btn-secondary btn-sm" href="#/pessoal/${mesAdd(m, -1)}" aria-label="Mês anterior">‹</a><strong>${mesNome(m)}</strong><a class="btn btn-secondary btn-sm" href="#/pessoal/${mesAdd(m, 1)}" aria-label="Próximo mês">›</a>${m === mesAtual() ? '' : '<a class="btn btn-secondary btn-sm hj" href="#/pessoal">Voltar para este mês</a>'}</div>
+    <div class="stats-block"><div class="stats-row" ${g4}>${stat('Total do mês', money(tot)) + stat('Já pago', money(pago), 'green') + stat('Falta pagar', money(tot - pago), 'yellow') + stat('Vencidas', venc.length ? `${venc.length} · ${money(venc.reduce((a, l) => a + +l.valor, 0))}` : '0', venc.length ? 'red' : 'muted')}</div></div>
+    ${tot ? `<div class="prog" style="margin:-6px 0 20px"><div style="width:${pago / tot * 100}%"></div></div>` : ''}
+    ${prox.length ? `<p class="hint" style="margin:0 0 16px">Próximas: ${prox.map(l => `<strong style="color:var(--text-primary)">${esc(l.descricao)}</strong> dia ${l.dia_venc}`).join(' · ')}</p>` : ''}
+    <div class="panel">${ls.map(l => { const [st, stl] = statusConta(l, m), c = l.conta_id && S.pco.find(x => x.id === l.conta_id);
+      return `<div class="ct ${l.pago_em ? 'ok' : ''}"><input type="checkbox" data-c="pc-pago" data-id="${l.id}" ${l.pago_em ? 'checked' : ''} aria-label="Pago: ${esc(l.descricao)}"><div class="ds"><b>${esc(l.descricao)}</b><small><span class="ch ${st}">${stl}</span>${l.dia_venc ? `<span>Vence dia ${l.dia_venc}</span>` : '<span>Sem vencimento</span>'}${l.parcela ? `<span class="tag-rec">Parcela ${l.parcela} de ${l.parcela_total}</span>` : c ? `<span class="tag-rec">${TIPOC[c.tipo]}</span>` : ''}${l.pago_em ? `<span>Pago em ${dmy(l.pago_em)}</span>` : ''}${l.codigo ? `<button class="btn btn-ghost btn-sm" style="height:24px;padding:0 10px;font-size:11px" data-a="copy-text" data-text="${esc(l.codigo)}" data-msg="Código copiado" type="button">Copiar código</button>` : ''}</small></div><span class="vl">${money(l.valor)}</span><span class="acs"><button class="btn btn-ghost btn-sm" data-a="pc-form" data-id="${l.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-a="pc-del-ask" data-id="${l.id}" type="button" aria-label="Excluir ${esc(l.descricao)}">✕</button></span></div>`; }).join('') || '<p style="font-size:14px;color:var(--text-muted);padding:8px 0">Nenhuma conta neste mês.</p>'}
+    ${ls.length ? `<div class="ct-tot"><span>Total do mês</span><b>${money(tot)}</b></div>` : ''}</div>`;
+};
+function contaForm(l, m) {
+  const ed = !!l, c = ed && l.conta_id && S.pco.find(x => x.id === l.conta_id), tipo = c ? c.tipo : 'unica';
+  modal(mhead(ed ? 'Editar conta' : 'Nova conta', ed ? `${esc(l.descricao)} · ${mesNome(l.mes)}` : mesNome(m)) + `<form data-s="pc-save" data-id="${ed ? l.id : ''}" data-m="${ed ? l.mes : m}"><div class="modal-body">
+    <div class="form-group"><label for="pc_d">Descrição</label><input id="pc_d" maxlength="120" required placeholder="Ex.: Cartão Nubank" value="${esc(ed ? l.descricao : '')}"></div>
+    <div class="form-row"><div class="form-group"><label for="pc_v">Valor (R$)</label><input id="pc_v" class="money" inputmode="numeric" placeholder="0,00" value="${ed ? fmtVal(l.valor) : ''}"></div><div class="form-group"><label for="pc_dia">Vence no dia</label><input id="pc_dia" type="number" min="1" max="31" placeholder="Opcional" value="${ed && l.dia_venc ? l.dia_venc : ''}"></div></div>
+    ${ed ? (c ? `<label class="ck"><input type="checkbox" id="pc_prox" ${c.tipo === 'fixa' ? 'checked' : ''}>Usar estes dados também nos próximos meses</label><p class="hint" style="margin:6px 0 0">${TIPOC[c.tipo]}${c.tipo === 'parcelada' ? ` · parcela ${l.parcela} de ${l.parcela_total}` : ''}.</p>` : '')
+      : `<div class="form-group"><label for="pc_t">Repete?</label><select id="pc_t" data-c="pc-tipo"><option value="unica">Só este mês</option><option value="fixa">Todo mês, mesmo valor</option><option value="variavel">Todo mês, o valor muda (cartão, luz, água)</option><option value="parcelada">Parcelada</option></select></div>
+      <div class="form-row" id="pc_parc" hidden><div class="form-group"><label for="pc_pa">Parcela deste mês</label><input id="pc_pa" type="number" min="1" value="1"></div><div class="form-group"><label for="pc_pt">Total de parcelas</label><input id="pc_pt" type="number" min="1" placeholder="Ex.: 10"></div></div>`}
+    <div class="form-group" style="margin-top:14px"><label for="pc_c">Código de barras ou chave Pix</label><input id="pc_c" maxlength="200" placeholder="Opcional, para copiar na hora de pagar" value="${esc(ed ? l.codigo : '')}"></div>
+    </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar</button></div></form>`);
+}
 V.previas = () => head('Prévias', 'Envie a primeira versão para o cliente aprovar antes de seguir com o resto.', '<button class="btn btn-primary" data-a="pre-form" type="button">Nova prévia</button>') +
   table(['Cliente', 'Prévia', 'Rodada', 'Status', ''], live(S.pre).map(v => [`<strong>${esc(preNome(v))}</strong>`, esc(v.titulo), v.rodada, badge(STV[v.status]),
     `<div class="actions-cell"><a class="btn btn-solid btn-sm" href="#/previa/${v.id}">Abrir</a><button class="btn btn-secondary btn-sm" data-a="copy-text" data-text="${esc(previaUrl(v))}" data-msg="Link copiado" type="button">Copiar link</button><button class="btn btn-danger btn-sm" data-a="trash" data-k="pre" data-id="${v.id}" type="button">Excluir</button></div>`]), 'Nenhuma prévia ainda. Crie uma e envie o link para o cliente.');
@@ -1369,6 +1456,18 @@ const A = {
     const itens = [...document.querySelectorAll('#condList .cond-item')].map(el => ({ titulo:el.querySelector('[name=titulo]').value.trim(), texto:el.querySelector('[name=texto]').value.trim(), so_impresso:el.querySelector('[name=so_impresso]').checked })).filter(c => c.titulo && c.texto);
     await db('central_config?chave=eq.condicoes', 'PATCH', { valor:{ itens }, updated_at:new Date().toISOString() }); await sync('Condições salvas');
   },
+  'pin-travar'() { pesAte = 0; route(); },
+  async 'pin-esqueci'() { const senha = prompt('Para criar um PIN novo, digite a senha da sua conta da central:'); if (!senha) return;
+    try { await authCall('password', { email:sess.email, password:senha }); } catch (e) { return toast('Senha incorreta.'); }
+    await db('central_config?chave=eq.pessoal_pin', 'PATCH', { valor:{}, updated_at:new Date().toISOString() }); S.pin = {}; route(); toast('Crie um PIN novo.'); },
+  'pc-form'(d) { contaForm(d.id && S.plc.find(x => x.id === d.id), d.m); },
+  'pc-del-ask'(d) { const l = S.plc.find(x => x.id === d.id), c = l.conta_id && S.pco.find(x => x.id === l.conta_id);
+    modal(`<div class="modal-body" style="padding:32px;text-align:center"><h3 style="font-size:20px;margin-bottom:6px">Excluir conta</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:22px"><strong>${esc(l.descricao)}</strong> · ${money(l.valor)}${c ? '<br>Esta conta se repete todo mês.' : ''}</p><div class="hbtns" style="justify-content:center;flex-wrap:wrap"><button class="btn btn-danger" data-a="pc-del" data-id="${l.id}" data-v="mes" type="button">${c ? 'Só deste mês' : 'Excluir'}</button>${c ? `<button class="btn btn-danger" data-a="pc-del" data-id="${l.id}" data-v="parar" type="button">Parar de repetir</button>` : ''}<button class="btn btn-secondary" data-a="close" type="button">Cancelar</button></div></div>`); },
+  async 'pc-del'(d) { const l = S.plc.find(x => x.id === d.id);
+    if (d.v === 'parar' && l.conta_id) { await patch('pco', l.conta_id, { fim:mesAdd(l.mes, -1) }); const futuros = S.plc.filter(x => x.conta_id === l.conta_id && x.mes >= l.mes && !x.pago_em).map(x => x.id); if (futuros.length) await db(`central_pessoal_lanc?id=in.(${futuros.join(',')})`, 'DELETE'); }
+    else if (l.conta_id) await patch('plc', l.id, { oculto:true });
+    else await db(`central_pessoal_lanc?id=eq.${encodeURIComponent(l.id)}`, 'DELETE');
+    closeModal(); await sync(d.v === 'parar' ? 'Não repete mais a partir deste mês' : 'Conta excluída'); },
   'ent-form'(d) {
     entArq.forEach(f => f._url && URL.revokeObjectURL(f._url)); entArq = [];
     const c = d.cli && cli(d.cli), seg = (() => { const x = new Date(hoje() + 'T12:00:00'); const dw = x.getDay(); x.setDate(x.getDate() + (dw === 6 ? 2 : dw === 0 ? 1 : 1 - dw)); return x.toISOString().slice(0, 10); })();
@@ -1449,6 +1548,8 @@ const A = {
 const C = {
   async 'tar-ck'(el) { await patch('tar', el.dataset.id, { feita_em:el.checked ? new Date().toISOString() : null }); await sync(el.checked ? 'Feito' : 'Reaberta'); },
   'svc-serv'(el) { const o = el.selectedOptions[0], row = el.closest('.svc-row'), cu = row.querySelector('[name=servico_custom]'); if (el.value === 'materiais_impressos' && $('p_imp')) $('p_imp').checked = true; row.querySelector('[name=cobranca]').value = o.dataset.cob; syncPay(); cu.hidden = el.value !== '__custom__'; if (!cu.hidden) cu.focus(); },
+  async 'pc-pago'(el) { const l = S.plc.find(x => x.id === el.dataset.id); await patch('plc', l.id, { pago_em:el.checked ? hoje() : null }); l.pago_em = el.checked ? hoje() : null; route(); toast(el.checked ? 'Marcada como paga' : 'Voltou para a pagar'); },
+  'pc-tipo'(el) { $('pc_parc').hidden = el.value !== 'parcelada'; },
   'ent-arqs'(el) { const ok = [...el.files].filter(f => ARQ_OK.test(f.type) && f.size <= 52428800); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem, MP4, MOV ou PDF de até 50 MB.'); entArq.push(...ok); el.value = ''; entArqsRender(); },
   async 'ent-dias'(el) { const n = +el.value, c = cli(el.dataset.id); await patch('cli', c.id, { entregas_dias:n });
     await Promise.all(entDe(c.id).map(e => patch('ent', e.id, { expira_em:addDias(new Date(e.created_at).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }), n) }))); await sync(`Arquivos ficam ${n} dias`); },
@@ -1524,6 +1625,36 @@ const F = {
     const fim = Math.max(0, ...S.tar.filter(x => !x.feita_em).map(x => x.ordem || 0)) + 10;
     await db('central_tarefas', 'POST', { texto:texto.slice(0, 500), data:d, ordem:fim }); await sync('Tarefa adicionada');
     const n = $('tarNova'); if (n) n.focus();
+  },
+  async 'pin-ok'(form) {
+    const pin = [...form.querySelectorAll('[data-pin]')].map(i => i.value).join(''), err = $('pinErr');
+    if (!/^\d{4}$/.test(pin)) { err.textContent = 'Digite os 4 números.'; return; }
+    if (!S.pin.hash) {
+      const pin2 = [...form.querySelectorAll('[data-pin2]')].map(i => i.value).join('');
+      if (pin2 !== pin) { err.textContent = 'Os dois PINs não são iguais.'; form.querySelectorAll('[data-pin2]').forEach(i => i.value = ''); form.querySelector('[data-pin2="0"]').focus(); return; }
+      const salt = novoToken(), valor = { salt, hash:await hashPin(pin, salt) };
+      if (S.pinRow) await db('central_config?chave=eq.pessoal_pin', 'PATCH', { valor, updated_at:new Date().toISOString() }); else await db('central_config', 'POST', { chave:'pessoal_pin', valor });
+      S.pin = valor; S.pinRow = true;
+    } else if (await hashPin(pin, S.pin.salt) !== S.pin.hash) { err.textContent = 'PIN incorreto.'; form.querySelectorAll('[data-pin]').forEach(i => i.value = ''); form.querySelector('[data-pin="0"]').focus(); return; }
+    pesAte = Date.now() + 5 * 60 * 1000; route();
+  },
+  async 'pc-save'(form) {
+    const id = form.dataset.id, m = form.dataset.m, l = id && S.plc.find(x => x.id === id), desc = $('pc_d').value.trim().slice(0, 120), valor = parseVal($('pc_v').value), dia = parseInt($('pc_dia').value, 10) || null, codigo = $('pc_c').value.trim().slice(0, 200) || null;
+    if (!desc) return toast('Informe a descrição.'); if (dia && (dia < 1 || dia > 31)) return toast('O dia de vencimento vai de 1 a 31.');
+    if (l) {
+      await patch('plc', l.id, { descricao:desc, valor, dia_venc:dia, codigo });
+      if (l.conta_id && $('pc_prox') && $('pc_prox').checked) { await patch('pco', l.conta_id, { descricao:desc, valor, dia_venc:dia, codigo }); const fut = S.plc.filter(x => x.conta_id === l.conta_id && x.mes > l.mes && !x.pago_em).map(x => x.id); if (fut.length) await db(`central_pessoal_lanc?id=in.(${fut.join(',')})`, 'PATCH', { descricao:desc, valor, dia_venc:dia, codigo }); }
+    } else {
+      const t = $('pc_t').value;
+      if (t === 'unica') await db('central_pessoal_lanc', 'POST', { mes:m, descricao:desc, valor, dia_venc:dia, codigo });
+      else {
+        let inicio = m, pt = null, pa = null;
+        if (t === 'parcelada') { pa = parseInt($('pc_pa').value, 10); pt = parseInt($('pc_pt').value, 10); if (!(pt >= 1) || !(pa >= 1) || pa > pt) return toast('Confira a parcela deste mês e o total de parcelas.'); inicio = mesAdd(m, -(pa - 1)); }
+        const [c] = await db('central_pessoal_contas', 'POST', { descricao:desc, tipo:t, valor, dia_venc:dia, inicio, parcela_total:pt, codigo });
+        await db('central_pessoal_lanc', 'POST', { conta_id:c.id, mes:m, descricao:desc, valor, dia_venc:dia, codigo, parcela:pa, parcela_total:pt });
+      }
+    }
+    closeModal(); await sync('Conta salva');
   },
   async 'ent-save'(form) {
     const c = cli($('e_cli').value), tit = $('e_tit').value.trim() || `Semana de ${dmy(hoje())}`, dias = +$('e_dias').value || 14;
@@ -1650,6 +1781,9 @@ document.addEventListener('change', e => { if (e.target.name === 'cobranca') syn
 document.addEventListener('submit', e => { const f = e.target.closest('[data-s]'); if (f && F[f.dataset.s]) { e.preventDefault(); run(F[f.dataset.s], f); } });
 document.addEventListener('input', e => { const el = e.target; if (!el.classList || !el.classList.contains('money')) return; const v = el.value.replace(/\D/g, ''); el.value = v ? (parseInt(v, 10) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('input', e => { const el = e.target; if (!el.matches || !el.matches('[data-pin],[data-pin2]')) return; el.value = el.value.replace(/\D/g, '').slice(-1);
+  if (el.value) { const nx = el.nextElementSibling || (el.matches('[data-pin]') && el.form.querySelector('[data-pin2="0"]')); if (nx) nx.focus(); else el.form.requestSubmit(); } });
+document.addEventListener('keydown', e => { const el = e.target; if (e.key === 'Backspace' && el.matches && el.matches('[data-pin],[data-pin2]') && !el.value && el.previousElementSibling) el.previousElementSibling.focus(); });
 
 /* ============ ROTAS E INÍCIO ============ */
 function route() {
