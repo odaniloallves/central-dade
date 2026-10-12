@@ -319,6 +319,13 @@ const TIPO = { lp:'Landing page', site:'Site institucional', identidade:'Identid
 const STB = { novo:['b-novo','Novo'], andamento:['b-and','Em andamento'], concluido:['b-ok','Concluído'] };
 const STC = { rascunho:['b-and','Rascunho'], aprovada:['b-ok','Aprovada'] };
 const cli = id => S.cli.find(c => c.id === id);
+/* Mesmo cliente: mesmo CPF/CNPJ, mesmo e-mail ou mesmo nome (sem acento, maiúsculas, espaços e pontuação). */
+const normNome = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const soDig = t => String(t || '').replace(/\D/g, '');
+function acharCli({ documento, email, nome } = {}, fora) {
+  const d = soDig(documento), e = String(email || '').trim().toLowerCase(), n = normNome(nome), lista = live(S.cli).filter(c => c.id !== fora);
+  return (d && lista.find(c => soDig(c.documento) === d)) || (e && lista.find(c => String(c.email || '').trim().toLowerCase() === e)) || (n && lista.find(c => normNome(c.nome) === n)) || null;
+}
 const briNome = b => { const c = b.cliente_id && cli(b.cliente_id); return c ? c.nome : b.empresa; };
 const copNome = c => { const k = c.cliente_id && cli(c.cliente_id); if (k) return k.nome; const b = S.bri.find(b => b.id === c.briefing_id); return b ? briNome(b) : 'Sem cliente'; };
 const dadosBri = b => ({ contato:b.responsavel || null, email:b.email || null, whatsapp:b.whatsapp || null, razao_social:b.razao_social || null, documento:b.documento || null, telefone:b.telefone || null, endereco:b.endereco || null });
@@ -962,8 +969,9 @@ const A = {
   'f-arq'(d) { fArq = !!d.v; route(); },
   async 'cli-arq'(d) { const c = cli(d.id); await patch('cli', d.id, { arquivado_em:c.arquivado_em ? null : new Date().toISOString() }); await sync(c.arquivado_em ? 'Cliente reativado' : 'Cliente arquivado'); },
   async 'bri-newcli'(d) {
-    const b = S.bri.find(x => x.id === d.id);
-    const [c] = await db('central_clientes', 'POST', { nome:b.empresa, ...dadosBri(b) });
+    const b = S.bri.find(x => x.id === d.id), dados = dadosBri(b), ja = acharCli({ documento:b.documento, email:b.email, nome:b.empresa });
+    if (ja) { const falta = {}; Object.entries(dados).forEach(([k, v]) => { if (v && !ja[k]) falta[k] = v; }); await patch('bri', b.id, { cliente_id:ja.id }); if (Object.keys(falta).length) await patch('cli', ja.id, falta); return sync(`${ja.nome} já estava cadastrado. Briefing vinculado a ele.`); }
+    const [c] = await db('central_clientes', 'POST', { nome:b.empresa, ...dados });
     await patch('bri', b.id, { cliente_id:c.id }); await sync('Cliente criado e vinculado');
   },
   async 'bri-unlink'(d) { await patch('bri', d.id, { cliente_id:null }); await sync('Briefing desvinculado'); },
@@ -1184,7 +1192,7 @@ const F = {
   'pay-link'(form) { const l = $('pay_l').value.trim(); if (l && !/^https:\/\//i.test(l)) return toast('O link precisa começar com https://'); return payPatch(form.dataset.id, { link_cartao:l || null }, 'Link salvo', true); },
   'pro-filter'(form) { Object.keys(PF).forEach(k => PF[k] = form.elements[k].value.trim()); route(); },
   async 'pro-save'(form) {
-    const id = form.dataset.id, cid = $('p_cli').value || null, c = cid && cli(cid), nome = c ? c.nome : $('p_nome').value.trim();
+    const id = form.dataset.id, ja = !$('p_cli').value && acharCli({ nome:$('p_nome').value }), cid = $('p_cli').value || (ja ? ja.id : null), c = cid && cli(cid), nome = c ? c.nome : $('p_nome').value.trim();
     const itens = [...form.querySelectorAll('.svc-row')].map(r => { const sel = r.querySelector('[name=servico]').value; return { servico:sel === '__custom__' ? r.querySelector('[name=servico_custom]').value.trim().slice(0, 60) : sel, cobranca:r.querySelector('[name=cobranca]').value === 'mensal' ? 'mensal' : 'unico', valor:parseVal(r.querySelector('[name=valor]').value), prazo:r.querySelector('[name=prazo]').value.trim() || null, nao_incluso:r.querySelector('[name=nao_incluso]').value.trim() || null, observacao:r.querySelector('[name=observacao]').value.trim().slice(0, 600) || null, opcional:r.querySelector('[name=opcional]').checked, aceito:r.querySelector('[name=opcional]').checked && r.querySelector('.svc-extra').dataset.aceito ? r.querySelector('.svc-extra').dataset.aceito === 'true' : null }; }).filter(i => i.servico && i.valor > 0).map((i, ordem) => ({ ...i, ordem }));
     const temU = itens.some(i => i.cobranca === 'unico'), temM = itens.some(i => i.cobranca === 'mensal');
     const link = temU ? $('p_link').value.trim() : '', dia = temM ? parseInt($('p_dia').value, 10) : null;
@@ -1255,6 +1263,8 @@ const F = {
   async 'cli-save'(form) {
     const v = id => form.querySelector('#c_' + id).value.trim() || null;
     const body = Object.fromEntries(['nome', 'segmento', 'razao_social', 'documento', 'contato', 'email', 'whatsapp', 'telefone', 'endereco', 'observacoes'].map(k => [k, v(k)]));
+    const ja = acharCli(body, form.dataset.id);
+    if (ja && !confirm(`Já existe o cliente "${ja.nome}" com ${soDig(body.documento) && soDig(ja.documento) === soDig(body.documento) ? 'o mesmo CPF/CNPJ' : body.email && String(ja.email || '').toLowerCase() === body.email.toLowerCase() ? 'o mesmo e-mail' : 'o mesmo nome'}. Salvar mesmo assim como outro cliente?`)) return;
     if (form.dataset.id) await patch('cli', form.dataset.id, body); else await db('central_clientes', 'POST', body);
     closeModal(); await sync('Cliente salvo');
   },
