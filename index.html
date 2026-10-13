@@ -1040,7 +1040,7 @@ V.financeiro = arg => {
       <button class="btn btn-sm ${f.pago_em ? 'btn-ghost' : 'btn-fechar'}" data-a="fec-set" data-pl="${pl.id}" data-m="${comp}" data-v="pago_em" type="button">${f.pago_em ? 'Desfazer recebido' : 'Recebido'}</button>
       <button class="btn btn-sm ${f.nf_em ? 'btn-ghost' : 'btn-secondary'}" data-a="fec-set" data-pl="${pl.id}" data-m="${comp}" data-v="nf_em" type="button">${f.nf_em ? 'Desfazer nota' : 'Nota emitida'}</button></span></div>`; };
   const g4 = 'style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"';
-  return head('Financeiro', 'O que entrou, o que falta receber e quanto separar de imposto, mês a mês.') +
+  return head('Financeiro', 'O que entrou, o que falta receber e quanto separar de imposto, mês a mês.', `<button class="btn btn-secondary" data-a="copy-text" data-text="52409459000147" data-msg="Pix copiado: CNPJ 52.409.459/0001-47" type="button" title="CNPJ 52.409.459/0001-47">Copiar Pix da empresa</button>`) +
     `<div class="fin-nav"><a class="btn btn-secondary btn-sm" href="#/financeiro/${mesAdd(m, -1)}" aria-label="Mês anterior">‹</a><strong>${mesNome(m)}</strong><a class="btn btn-secondary btn-sm" href="#/financeiro/${mesAdd(m, 1)}" aria-label="Próximo mês">›</a>${atual ? '' : '<a class="btn btn-secondary btn-sm hj" href="#/financeiro">Voltar para este mês</a>'}</div>
     <div class="stats-block"><div class="stats-row" ${g4}>${stat('Entrou no mês', money(rec), 'green') + stat('A receber de mensalidades', money(aReceber), 'yellow') + stat('Receita recorrente', money(recorrente(m)), 'purple') + stat('Imposto do mês', imp == null ? 'Definir' : money(imp), 'muted')}</div></div>
     ${(() => { const g = metaInfo(m), x = S.metas || {}, propria = x.meses && x.meses[m] != null;
