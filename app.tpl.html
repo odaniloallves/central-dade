@@ -291,7 +291,7 @@ const addDias = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.get
 const hoje = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 async function loadAll() {
   await db(`central_propostas?status=eq.ativa&deleted_at=is.null&data_expiracao=lt.${hoje()}`, 'PATCH', { status:'expirada' });
-  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu, ent, pec, pco, pla2, ppin] = await Promise.all([
+  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu, ent, pec, pco, pla2, ppin, pf] = await Promise.all([
     db('central_clientes?select=*&order=nome.asc'),
     db('central_briefings?select=*&order=created_at.desc'),
     db('central_copys?select=*&order=updated_at.desc'),
@@ -309,7 +309,9 @@ async function loadAll() {
     db('central_pessoal_contas?select=*&order=created_at.asc'),
     db('central_pessoal_lanc?select=*&order=mes.desc'),
     db('central_config?select=*&chave=eq.pessoal_pin'),
+    db('central_portfolio?select=*&deleted_at=is.null&order=ordem.asc,created_at.desc'),
   ]);
+  S.pf = pf;
   S.pla = pla; S.fec = fec; S.imp = (imp[0] && imp[0].valor) || { tipo:'percentual', valor:null };
   S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0]; S.avu = avu; S.ent = ent; S.pec = pec; S.pco = pco; S.plc = pla2; S.pin = (ppin[0] && ppin[0].valor) || {}; S.pinRow = !!ppin[0];
   S.tar = tar;
@@ -340,7 +342,7 @@ async function planosDasPropostas() {
     S.pla = [...S.pla, ...(novos || [])];
   } catch (e) { console.error(e); }
 }
-const TAB = { pco:'central_pessoal_contas', plc:'central_pessoal_lanc', ent:'central_entregas', pec:'central_entrega_pecas', avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
+const TAB = { pf:'central_portfolio', pco:'central_pessoal_contas', plc:'central_pessoal_lanc', ent:'central_entregas', pec:'central_entrega_pecas', avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
 const patch = (k, id, body) => db(`${TAB[k]}?id=eq.${encodeURIComponent(id)}`, 'PATCH', body);
 
 /* ============ DOMÍNIO ============ */
@@ -461,6 +463,7 @@ const NAV = [
   ['-', 'Projetos'],
   ['briefings', 'Briefings e copys', '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'],
   ['previas', 'Prévias e entregas', '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'],
+  ['portfolio', 'Portfólio', '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'],
   ['-', 'Comercial'],
   ['propostas', 'Propostas', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'],
   ['financeiro', 'Financeiro', '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
@@ -862,6 +865,32 @@ V.entrega = cid => {
           <div class="bts"><label class="btn btn-secondary btn-sm" style="cursor:pointer">Trocar arquivo<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/quicktime,application/pdf" data-c="pec-trocar" data-id="${x.id}" hidden></label><button class="btn btn-ghost btn-sm" data-a="pec-del" data-id="${x.id}" type="button">Remover</button></div></div></div>`).join('') || '<p style="font-size:14px;color:var(--text-muted)">Sem peças nesta semana.</p>'}</div></div>`; }).join('') ||
       `<div class="table-wrapper"><div class="empty-state"><p>Nenhuma semana no ar para ${esc(c.nome)}.</p></div></div>`);
 };
+/* ---- portfólio ---- */
+const PF_CAT = { identidade:'Identidade visual', posts:'Posts e redes sociais', impressos:'Materiais impressos', sites:'Sites e landing pages', apresentacoes:'Apresentações', motion:'Motion e vídeo', outros:'Outros projetos' };
+const pfImg = p => /^assets\//.test(p) ? new URL(p, location.href.split('#')[0]).href : `${SB}/storage/v1/object/public/central-portfolio/${p.split('/').map(encodeURIComponent).join('/')}`;
+const pfVid = p => /\.mp4$/i.test(p);
+let pfSel = [], pfEd = [];
+const pfLink = () => new URL('portfolio' + (pfSel.length ? '?' + pfSel.join(',') : ''), location.href.split('#')[0]).href;
+const pfSlug = t => (String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'projeto') + '-' + Math.random().toString(36).slice(2, 6);
+V.portfolio = () => {
+  const ps = S.pf || [], pub = ps.filter(p => p.publicado && (p.imagens || []).length), cats = Object.keys(PF_CAT).filter(k => ps.some(p => p.categoria === k));
+  pfSel = pfSel.filter(k => pub.some(p => p.categoria === k));
+  const linkBox = `<div class="panel" style="margin-bottom:20px"><h2 style="margin:0 0 4px">Link para mandar</h2><p class="hint" style="margin:0 0 14px">Escolha as categorias que interessam ao cliente. Sem nenhuma marcada, vão todos os projetos publicados.</p>
+    <div class="hbtns" style="flex-wrap:wrap;margin-bottom:14px">${Object.keys(PF_CAT).filter(k => pub.some(p => p.categoria === k)).map(k => `<button class="btn btn-sm ${pfSel.includes(k) ? 'btn-primary' : 'btn-secondary'}" data-a="pf-sel" data-k="${k}" type="button" aria-pressed="${pfSel.includes(k)}">${PF_CAT[k]} <span style="opacity:.6">${pub.filter(p => p.categoria === k).length}</span></button>`).join('') || '<span class="hint">Publique um projeto para montar o link.</span>'}</div>
+    <div class="linkcard" style="max-width:none"><code>${esc(pfLink())}</code><span class="hbtns"><button class="btn btn-primary btn-sm" data-a="copy-text" data-text="${esc(pfLink())}" data-msg="Link do portfólio copiado" type="button">Copiar link</button><a class="btn btn-ghost btn-sm" href="${esc(pfLink())}" target="_blank" rel="noopener">Abrir</a></span></div></div>`;
+  const card = p => { const im = p.imagens || [], c = im[0];
+    return `<div class="it ${p.publicado ? '' : 'alt'}"><button class="mid" data-a="pf-form" data-id="${p.id}" type="button" aria-label="Editar ${esc(p.titulo)}" style="aspect-ratio:4/3;border:0;padding:0;cursor:pointer;width:100%">${c ? (pfVid(c) ? `<video src="${esc(pfImg(c))}" muted playsinline></video>` : `<img src="${esc(pfImg(c))}" alt="" loading="lazy" style="object-fit:cover">`) : '<span>Sem imagens</span>'}</button>
+      <div class="inf"><span class="nm" title="${esc(p.titulo)}"><b>${esc(p.titulo)}</b></span><span>${esc(p.cliente || 'Sem cliente')} · ${im.length} ${im.length === 1 ? 'imagem' : 'imagens'}${p.destaque ? ' · ★ destaque' : ''}</span><span class="${p.publicado ? 'st-ok' : 'st-alt'}">${p.publicado ? 'Publicado' : 'Oculto'}</span>
+      <div class="bts"><button class="btn btn-secondary btn-sm" data-a="pf-form" data-id="${p.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-a="pf-mv" data-id="${p.id}" data-v="-1" type="button" aria-label="Mover para antes">←</button><button class="btn btn-ghost btn-sm" data-a="pf-mv" data-id="${p.id}" data-v="1" type="button" aria-label="Mover para depois">→</button><a class="btn btn-ghost btn-sm" href="${esc(new URL('portfolio#' + p.slug, location.href.split('#')[0]).href)}" target="_blank" rel="noopener">Ver</a></div></div></div>`; };
+  return head('Portfólio', 'Seus projetos organizados por categoria, num link bonito para mandar ao cliente.', `<span class="hbtns"><a class="btn btn-secondary" href="${esc(new URL('portfolio', location.href.split('#')[0]).href)}" target="_blank" rel="noopener">Ver portfólio</a><button class="btn btn-primary" data-a="pf-form" type="button">Novo projeto</button></span>`) +
+    linkBox + (cats.map(k => { const l = ps.filter(p => p.categoria === k); return `<div class="panel" style="margin-bottom:16px"><h2 style="margin:0 0 14px">${PF_CAT[k]} <span style="font-weight:400;color:var(--text-muted);font-size:14px">${l.length}</span></h2><div class="pz">${l.map(card).join('')}</div></div>`; }).join('') ||
+    '<div class="table-wrapper"><div class="empty-state"><p>Nenhum projeto ainda. Clique em Novo projeto e suba as imagens.</p></div></div>');
+};
+function pfEdRender() {
+  const box = $('pf_imgs'); if (!box) return;
+  box.innerHTML = pfEd.map((x, i) => { const src = x.f ? (x.u = x.u || URL.createObjectURL(x.f)) : pfImg(x.p), vid = x.f ? /^video/.test(x.f.type) : pfVid(x.p);
+    return `<div class="arq">${vid ? `<video src="${esc(src)}" muted style="width:56px;height:56px;object-fit:cover;border-radius:6px"></video>` : `<img src="${esc(src)}" alt="">`}<div>${i === 0 ? '<b style="color:var(--lime)">Capa</b> · ' : ''}${esc(x.f ? x.f.name : x.p.split('/').pop())}<small>${x.f ? kb(x.f.size) + ' · nova' : 'já publicada'}</small></div><span class="hbtns" style="flex-wrap:nowrap"><button class="btn btn-ghost btn-sm" data-a="pf-im" data-i="${i}" data-v="-1" type="button" aria-label="Subir">↑</button><button class="btn btn-ghost btn-sm" data-a="pf-im" data-i="${i}" data-v="1" type="button" aria-label="Descer">↓</button><button class="btn btn-ghost btn-sm" data-a="pf-im" data-i="${i}" data-v="x" type="button">Remover</button></span></div>`; }).join('');
+}
 /* ---- área pessoal: contas do mês, protegida por PIN ---- */
 let pesAte = 0;
 const pesAberto = () => Date.now() < pesAte;
@@ -957,8 +986,8 @@ function arqsRender() {
   const box = $('v_arqs'); if (!box) return;
   box.innerHTML = preArq.map((f, i) => { f._url = f._url || URL.createObjectURL(f); return `<div class="arq"><img src="${f._url}" alt=""><div>${esc(f.name)}<small>${kb(f.size)}</small></div><button class="btn btn-ghost btn-sm" data-a="pre-rm" data-i="${i}" type="button" aria-label="Remover ${esc(f.name)}">Remover</button></div>`; }).join('');
 }
-async function encolher(file) {
-  const bmp = await createImageBitmap(file), k = Math.min(1, 2200 / Math.max(bmp.width, bmp.height));
+async function encolher(file, max = 2200) {
+  const bmp = await createImageBitmap(file), k = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
   const cx = cv.getContext('2d'); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
   let blob = await new Promise(r => cv.toBlob(r, 'image/webp', .88));
@@ -1100,6 +1129,26 @@ const A = {
     else if (l.conta_id) await patch('plc', l.id, { oculto:true });
     else await db(`central_pessoal_lanc?id=eq.${encodeURIComponent(l.id)}`, 'DELETE');
     closeModal(); await sync(d.v === 'parar' ? 'Não repete mais a partir deste mês' : 'Conta excluída'); },
+  'pf-sel'(d) { pfSel = pfSel.includes(d.k) ? pfSel.filter(k => k !== d.k) : [...pfSel, d.k]; route(); },
+  async 'pf-mv'(d) { const p = S.pf.find(x => x.id === d.id), l = S.pf.filter(x => x.categoria === p.categoria), i = l.indexOf(p), j = i + +d.v; if (j < 0 || j >= l.length) return;
+    [l[i], l[j]] = [l[j], l[i]]; await Promise.all(l.map((x, k) => x.ordem === k ? null : patch('pf', x.id, { ordem:k })).filter(Boolean)); await sync(); },
+  'pf-im'(d) { const i = +d.i; if (d.v === 'x') { const [x] = pfEd.splice(i, 1); if (x && x.u) URL.revokeObjectURL(x.u); } else { const j = i + +d.v; if (j < 0 || j >= pfEd.length) return; [pfEd[i], pfEd[j]] = [pfEd[j], pfEd[i]]; } pfEdRender(); },
+  'pf-form'(d, el) {
+    const p = d.id && S.pf.find(x => x.id === d.id); pfEd.forEach(x => x.u && URL.revokeObjectURL(x.u)); pfEd = ((p && p.imagens) || []).map(x => ({ p:x }));
+    modal(mhead(p ? 'Editar projeto' : 'Novo projeto', 'A primeira imagem vira a capa. Use as setas para mudar a ordem.') + `<form data-s="pf-save" data-id="${p ? p.id : ''}"><div class="modal-body">
+      <div class="form-group"><label for="pf_t">Nome do projeto</label><input id="pf_t" maxlength="80" required value="${esc(p ? p.titulo : '')}" placeholder="Ex.: Rebranding Lucrum"></div>
+      <div class="form-row"><div class="form-group"><label for="pf_c">Cliente</label><input id="pf_c" maxlength="80" value="${esc(p ? p.cliente || '' : '')}" list="pf_cl"><datalist id="pf_cl">${live(S.cli).map(c => `<option value="${esc(c.nome)}">`).join('')}</datalist></div>
+      <div class="form-group"><label for="pf_k">Categoria</label><select id="pf_k">${Object.entries(PF_CAT).map(([k, l]) => `<option value="${k}" ${p && p.categoria === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div class="form-row"><div class="form-group"><label for="pf_a">Ano</label><input id="pf_a" type="number" min="2000" max="2100" value="${p ? p.ano || '' : new Date().getFullYear()}"></div><div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end;gap:8px"><label style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" id="pf_p" ${!p || p.publicado ? 'checked' : ''}> Publicado no portfólio</label><label style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" id="pf_d" ${p && p.destaque ? 'checked' : ''}> Destaque (aparece grande no topo)</label></div></div>
+      <div class="form-group"><label for="pf_x">Sobre o projeto</label><textarea id="pf_x" rows="4" maxlength="1200" placeholder="O desafio, o que foi feito e o resultado. Duas ou três frases bastam.">${esc(p ? p.descricao || '' : '')}</textarea></div>
+      <div class="form-group"><label for="pf_f">Imagens</label><div class="drop">JPG, PNG, WebP ou GIF (a central otimiza as imagens) e vídeo MP4 de até 10 MB.<input type="file" id="pf_f" multiple accept="image/png,image/jpeg,image/webp,image/gif,video/mp4" data-c="pf-arqs"></div><div class="arqs" id="pf_imgs"></div></div>
+    </div><div class="modal-foot">${p ? `<button class="btn btn-danger" data-a="pf-del" data-id="${p.id}" type="button" style="margin-right:auto">Excluir</button>` : ''}<button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit" id="pf_ok">Salvar projeto</button></div></form>`);
+    pfEdRender();
+  },
+  async 'pf-del'(d) { if (!confirm('Excluir este projeto do portfólio?')) return; const p = S.pf.find(x => x.id === d.id);
+    await patch('pf', d.id, { deleted_at:new Date().toISOString(), publicado:false });
+    const paths = (p.imagens || []).filter(x => !/^assets\//.test(x)); if (paths.length) try { await fetch(`${SB}/storage/v1/object/central-portfolio`, { method:'DELETE', headers:{ apikey:KEY, Authorization:'Bearer ' + sess.access_token, 'Content-Type':'application/json' }, body:JSON.stringify({ prefixes:paths }) }); } catch (e) {}
+    closeModal(); await sync('Projeto excluído'); },
   'ent-form'(d) {
     entArq.forEach(f => f._url && URL.revokeObjectURL(f._url)); entArq = [];
     const c = d.cli && cli(d.cli), seg = (() => { const x = new Date(hoje() + 'T12:00:00'); const dw = x.getDay(); x.setDate(x.getDate() + (dw === 6 ? 2 : dw === 0 ? 1 : 1 - dw)); return x.toISOString().slice(0, 10); })();
@@ -1182,6 +1231,7 @@ const C = {
   'svc-serv'(el) { const o = el.selectedOptions[0], row = el.closest('.svc-row'), cu = row.querySelector('[name=servico_custom]'); if (el.value === 'materiais_impressos' && $('p_imp')) $('p_imp').checked = true; row.querySelector('[name=cobranca]').value = o.dataset.cob; syncPay(); cu.hidden = el.value !== '__custom__'; if (!cu.hidden) cu.focus(); },
   async 'pc-pago'(el) { const l = S.plc.find(x => x.id === el.dataset.id); await patch('plc', l.id, { pago_em:el.checked ? hoje() : null }); l.pago_em = el.checked ? hoje() : null; route(); toast(el.checked ? 'Marcada como paga' : 'Voltou para a pagar'); },
   'pc-tipo'(el) { $('pc_parc').hidden = el.value !== 'parcelada'; },
+  'pf-arqs'(el) { const ok = [...el.files].filter(f => /^image\/(png|jpeg|webp|gif)$/.test(f.type) || (f.type === 'video/mp4' && f.size <= 10485760)); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem ou MP4 de até 10 MB.'); pfEd.push(...ok.sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric:true })).map(f => ({ f }))); el.value = ''; pfEdRender(); },
   'ent-arqs'(el) { const ok = [...el.files].filter(f => ARQ_OK.test(f.type) && f.size <= 52428800); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem, MP4, MOV ou PDF de até 50 MB.'); entArq.push(...ok); el.value = ''; entArqsRender(); },
   async 'ent-dias'(el) { const n = +el.value, c = cli(el.dataset.id); await patch('cli', c.id, { entregas_dias:n });
     await Promise.all(entDe(c.id).map(e => patch('ent', e.id, { expira_em:addDias(new Date(e.created_at).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }), n) }))); await sync(`Arquivos ficam ${n} dias`); },
@@ -1287,6 +1337,29 @@ const F = {
       }
     }
     closeModal(); await sync('Conta salva');
+  },
+  async 'pf-save'(form) {
+    const id = form.dataset.id, p = id && S.pf.find(x => x.id === id), titulo = $('pf_t').value.trim().slice(0, 80);
+    if (!titulo) return toast('Dê um nome ao projeto.'); if (!pfEd.length) return toast('Suba ao menos uma imagem.');
+    const body = { titulo, cliente:$('pf_c').value.trim().slice(0, 80) || null, categoria:$('pf_k').value, ano:parseInt($('pf_a').value, 10) || null, descricao:$('pf_x').value.trim() || null, publicado:$('pf_p').checked, destaque:$('pf_d').checked };
+    const btn = $('pf_ok'); btn.disabled = true;
+    try {
+      const row = p || (await db('central_portfolio', 'POST', { ...body, slug:pfSlug(titulo + ' ' + (body.cliente || '')), ordem:-1 }))[0];
+      const imgs = [], novos = pfEd.filter(x => x.f).length; let n = 0;
+      for (const x of pfEd) {
+        if (x.p) { imgs.push(x.p); continue; }
+        btn.textContent = `Enviando ${++n} de ${novos}…`;
+        const raw = /^(video|image\/gif)/.test(x.f.type), blob = raw ? x.f : await encolher(x.f, 2400);
+        const ext = raw ? (x.f.type === 'video/mp4' ? 'mp4' : 'gif') : blob.type === 'image/webp' ? 'webp' : 'jpg', path = `${row.id}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+        const r = await fetch(`${SB}/storage/v1/object/central-portfolio/${path}`, { method:'POST', headers:{ apikey:KEY, Authorization:'Bearer ' + sess.access_token, 'Content-Type':blob.type, 'x-upsert':'true' }, body:blob });
+        if (!r.ok) throw new Error(await r.text());
+        imgs.push(path);
+      }
+      await patch('pf', row.id, { ...body, imagens:imgs });
+      const fora = ((p && p.imagens) || []).filter(x => !imgs.includes(x) && !/^assets\//.test(x));
+      if (fora.length) try { await fetch(`${SB}/storage/v1/object/central-portfolio`, { method:'DELETE', headers:{ apikey:KEY, Authorization:'Bearer ' + sess.access_token, 'Content-Type':'application/json' }, body:JSON.stringify({ prefixes:fora }) }); } catch (e) {}
+    } catch (er) { btn.disabled = false; btn.textContent = 'Tentar de novo'; throw er; }
+    pfEd.forEach(x => x.u && URL.revokeObjectURL(x.u)); pfEd = []; closeModal(); await sync('Projeto salvo no portfólio');
   },
   async 'ent-save'(form) {
     const c = cli($('e_cli').value), tit = $('e_tit').value.trim() || `Semana de ${dmy(hoje())}`, dias = +$('e_dias').value || 14;
