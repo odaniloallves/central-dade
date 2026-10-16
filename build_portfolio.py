@@ -39,7 +39,7 @@ body{background:var(--ink-900);color:var(--white);min-height:100vh}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 24px}
 .card{display:block;text-decoration:none;color:inherit;cursor:pointer;background:none;border:0;padding:0;text-align:left;font:inherit;width:100%}
 .card .im{aspect-ratio:4/3;border-radius:var(--r-lg);overflow:hidden;background:var(--ink-800)}
-.card.big{grid-column:span 2}.card.big .im{aspect-ratio:16/8}
+.card.big{grid-column:span 2}.card.big .im{aspect-ratio:16/10}
 .card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
 .card:hover img{transform:scale(1.035)}
 .card .meta{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:16px 4px 0}
@@ -129,7 +129,9 @@ addEventListener('popstate',()=>{const h=decodeURIComponent(location.hash.slice(
 (async()=>{
   try{const r=await fetch(SB+'/rest/v1/rpc/central_portfolio_publico',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:'{}'});if(!r.ok)throw 0;P=await r.json()}
   catch(e){$('grid').innerHTML='<p class="vazio">Não foi possível carregar o portfólio. Recarregue a página.</p>';return}
-  if(q.length){P=P.filter(p=>q.includes(p.categoria));$('lede').textContent='Seleção de projetos: '+q.map(k=>CAT[k]).join(' · ')+'.'}
+  if(q.length)P=P.filter(p=>q.includes(p.categoria));
+  {const CU={identidade:'identidade visual',posts:'posts para redes sociais',impressos:'materiais impressos',sites:'sites',apresentacoes:'apresentações',motion:'motion e vídeo',outros:'outros projetos'},ks=Object.keys(CAT).filter(k=>P.some(p=>p.categoria===k)).map(k=>CU[k]);
+   if(ks.length){const t=ks.length>1?ks.slice(0,-1).join(', ')+' e '+ks[ks.length-1]:ks[0];$('lede').textContent=t.charAt(0).toUpperCase()+t.slice(1)+' criados pela dade.design.'}}
   filtros();cards();const h=decodeURIComponent(location.hash.slice(1));if(h)abrir(h,false);
 })();
 </script>
