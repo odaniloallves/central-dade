@@ -19,7 +19,7 @@ async def main():
       if nm == 'd':
         await pg.fill('#tarNova', 'Entregar identidade 2go'); await pg.fill('#tarPrazo', d(2)); await pg.click('.ag-add [type=submit]'); await pg.wait_for_timeout(500)
         print('nova:', [(x['texto'], x['data'], x.get('prazo')) for x in DB['central_tarefas'] if x['texto'].startswith('Entregar')])
-        print('chips:', await pg.locator('.pz-chip').all_inner_texts())
+        print('hoje:', await pg.locator('#agPend .tarefa .tx').all_inner_texts())
         await pg.click('[data-a=tar-prazo][data-id=t1]'); await pg.fill('#tp_d', d(5)); await pg.click('#modalBox [type=submit]'); await pg.wait_for_timeout(500)
         print('t1 prazo:', next(x for x in DB['central_tarefas'] if x['id']=='t1').get('prazo'))
       await pg.screenshot(path=f'ag_dia_{nm}.png', full_page=True)
