@@ -1414,7 +1414,8 @@ function compPdf(p) {
 /* ---- agenda ---- */
 let agDia = null;
 const porOrdem = (a, b) => (a.ordem || 0) - (b.ordem || 0) || a.data.localeCompare(b.data) || String(a.created_at).localeCompare(String(b.created_at));
-const pendHoje = () => S.tar.filter(x => !x.feita_em && x.data <= hoje()).sort(porOrdem);
+const diaDa = x => x.prazo || x.data;
+const pendHoje = () => S.tar.filter(x => !x.feita_em && diaDa(x) <= hoje()).sort(porOrdem);
 const feitasEm = d => S.tar.filter(x => x.feita_em && new Date(x.feita_em).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) === d);
 const diaCurto = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit' }).replace('.', '');
 const prazoChip = x => { if (!x.prazo || x.feita_em) return ''; const h = hoje(), c = x.prazo < h ? 'atras' : x.prazo === h ? 'hoje' : '';
@@ -1423,7 +1424,7 @@ const diaLongo = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { we
 function tarefasDo(d) {
   const h = hoje();
   if (d === h) return { pend:pendHoje(), ok:feitasEm(h) };
-  if (d > h) return { pend:S.tar.filter(x => !x.feita_em && x.data === d).sort(porOrdem), ok:[] };
+  if (d > h) return { pend:S.tar.filter(x => !x.feita_em && diaDa(x) === d).sort(porOrdem), ok:[] };
   return { pend:[], ok:feitasEm(d) };
 }
 const tarefaHtml = (x, curto, i, n) => { const h = hoje(), atras = !x.feita_em && x.data < h, mover = !curto && !x.feita_em && n > 1;
@@ -1456,15 +1457,13 @@ V.agenda = () => {
   const h = hoje(), d = agDia || h, { pend, ok } = tarefasDo(d), total = pend.length + ok.length, passado = d < h;
   const vis = `<div class="ag-vis" role="tablist"><button class="${agVis === 'dia' ? 'on' : ''}" data-a="ag-vis" data-v="dia" type="button" role="tab" aria-selected="${agVis === 'dia'}">Dia</button><button class="${agVis === 'mes' ? 'on' : ''}" data-a="ag-vis" data-v="mes" type="button" role="tab" aria-selected="${agVis === 'mes'}">Mês</button></div>`;
   if (agVis === 'mes') return head('Agenda', 'Visão do mês: as entregas aparecem no dia do prazo.') + vis + agendaMes();
-  const entregas = d === h ? [] : S.tar.filter(x => !x.feita_em && x.prazo === d && x.data !== d).sort(porOrdem);
   return head('Agenda', 'O que você precisa fazer. O que não for concluído passa sozinho para o dia seguinte.') + vis +
     `<div class="ag-nav"><button class="btn btn-secondary btn-sm" data-a="ag-dia" data-v="-1" type="button" aria-label="Dia anterior">‹</button><strong>${d === h ? 'Hoje, ' : ''}${diaLongo(d)}</strong><button class="btn btn-secondary btn-sm" data-a="ag-dia" data-v="1" type="button" aria-label="Próximo dia">›</button>${d === h ? '' : '<button class="btn btn-secondary btn-sm hj" data-a="ag-dia" data-v="0" type="button">Voltar para hoje</button>'}</div>
     <div class="panel">
-      ${passado ? '' : `<form class="ag-add" data-s="tar-add"><input id="tarNova" maxlength="500" placeholder="${d === h ? 'O que você precisa fazer hoje?' : 'Adicionar tarefa para este dia'}" autocomplete="off"><label class="ag-prazo" title="Opcional: a tarefa aparece todo dia até ser feita e fica marcada no dia da entrega">Entrega <input type="date" id="tarPrazo" min="${d}" aria-label="Data de entrega (opcional)"></label><button class="btn btn-primary" type="submit">Adicionar</button></form>`}
+      ${passado ? '' : `<form class="ag-add" data-s="tar-add"><input id="tarNova" maxlength="500" placeholder="${d === h ? 'O que você precisa fazer hoje?' : 'Adicionar tarefa para este dia'}" autocomplete="off"><label class="ag-prazo" title="Opcional: a tarefa aparece na agenda no dia da entrega">Entrega <input type="date" id="tarPrazo" min="${d}" aria-label="Data de entrega (opcional)"></label><button class="btn btn-primary" type="submit">Adicionar</button></form>`}
       ${total ? `<div style="font-size:13px;color:var(--text-secondary)">${ok.length} de ${total} ${total === 1 ? 'concluída' : 'concluídas'}</div><div class="prog"><div style="width:${total ? ok.length / total * 100 : 0}%"></div></div>` : ''}
       <div id="agPend">${pend.map((x, i) => tarefaHtml(x, false, i, pend.length)).join('')}</div>${ok.map(x => tarefaHtml(x)).join('')}
       ${total ? '' : `<p style="font-size:14px;color:var(--text-muted);padding:8px 0">${passado ? 'Nenhuma tarefa concluída neste dia.' : 'Nada por aqui ainda.'}</p>`}
-      ${entregas.length ? `<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:22px 0 4px">Com entrega neste dia</h3>${entregas.map(x => tarefaHtml(x, true)).join('')}` : ''}
       ${passado ? '<p class="hint">Dias anteriores mostram o que foi concluído. O que ficou em aberto aparece em Hoje.</p>' : ''}
     </div>`;
 };
@@ -1611,10 +1610,10 @@ const A = {
   'ag-mes'(d) { const m = mesAtual(); agMes = d.v === '0' ? null : mesAdd(agMes || m, +d.v); if (agMes === m) agMes = null; route(); },
   'ag-ir'(d) { agVis = 'dia'; agDia = d.v === hoje() ? null : d.v; route(); scrollTo(0, 0); },
   'tar-prazo'(d) { const x = S.tar.find(y => y.id === d.id);
-    modal(mhead('Data de entrega', esc(x.texto)) + `<form data-s="tar-prazo" data-id="${x.id}"><div class="modal-body"><div class="form-group"><label for="tp_d">Entregar até</label><input type="date" id="tp_d" value="${x.prazo || ''}" min="${hoje()}" required></div><p class="hint">A tarefa continua aparecendo todo dia em Hoje até ser concluída, e fica marcada no dia da entrega na visão do mês.</p></div>
+    modal(mhead('Data de entrega', esc(x.texto)) + `<form data-s="tar-prazo" data-id="${x.id}"><div class="modal-body"><div class="form-group"><label for="tp_d">Entregar até</label><input type="date" id="tp_d" value="${x.prazo || ''}" min="${hoje()}" required></div><p class="hint">A tarefa aparece na agenda só no dia da entrega. Se não for concluída, continua aparecendo nos dias seguintes até ser feita.</p></div>
       <div class="modal-foot">${x.prazo ? '<button class="btn btn-ghost" data-a="tar-prazo-rm" data-id="' + x.id + '" type="button" style="margin-right:auto">Tirar data</button>' : ''}<button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar</button></div></form>`); },
   async 'tar-prazo-rm'(d) { await patch('tar', d.id, { prazo:null }); closeModal(); await sync('Data de entrega removida'); },
-  async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); await patch('tar', d.id, { data:addDias(base, 1) }); await sync('Passou para o dia seguinte'); },
+  async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); const nd = addDias(x.prazo ? (x.prazo > base ? x.prazo : base) : base, 1); await patch('tar', d.id, x.prazo ? { data:nd, prazo:nd } : { data:nd }); await sync('Passou para o dia seguinte'); },
   async 'tar-mv'(d) { const ids = [...document.querySelectorAll('#agPend .tarefa')].map(el => el.dataset.tid), i = ids.indexOf(d.id), j = i + +d.v;
     if (i < 0 || j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; await salvaOrdem(ids); },
   async 'tar-del'(d) { await db(`central_tarefas?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); await sync('Tarefa excluída'); },
