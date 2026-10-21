@@ -118,6 +118,33 @@ __EXTRA_CSS__
 .tarefa.arrastando{background:var(--surface);border-radius:12px;box-shadow:0 10px 30px -12px rgba(0,0,0,.6);position:relative;z-index:5;cursor:grabbing}
 .tarefa.arrastando .alca{cursor:grabbing}
 .ag-add input{min-width:0}
+.ag-add .ag-prazo{flex:none;display:flex;align-items:center;gap:8px;height:52px;padding:0 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);font-size:13px;color:var(--text-secondary);cursor:pointer}
+.ag-add .ag-prazo input{flex:none;height:auto;width:auto;padding:0;border:0;background:none;box-shadow:none;color:var(--text-primary);font-size:14px;color-scheme:dark}
+:root[data-theme="light"] .ag-add .ag-prazo input{color-scheme:light}
+.pz-chip{display:table;margin-top:6px;white-space:nowrap;font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--surface);color:var(--text-secondary)}
+.pz-chip.hoje{background:rgba(245,165,36,.14);color:var(--amber)}
+.pz-chip.atras{background:rgba(255,95,87,.14);color:#ff7a72}
+.ag-vis{display:inline-flex;gap:4px;margin:-4px 0 20px;padding:4px;border:1px solid var(--border);border-radius:var(--radius-full,999px);background:var(--bg-card)}
+.ag-vis button{height:36px;padding:0 20px;border:0;border-radius:999px;background:none;color:var(--text-secondary);font:600 14px inherit;font-family:inherit;cursor:pointer}
+.ag-vis button:hover{color:var(--text-primary)}
+.ag-vis button.on{background:var(--lime);color:#171617}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .wd{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;padding:0 6px 4px}
+.cal .d{min-height:112px;border:1px solid var(--border-soft);border-radius:12px;padding:8px;background:var(--bg-card);cursor:pointer;display:flex;flex-direction:column;gap:4px;text-align:left;font:inherit;color:inherit;min-width:0}
+.cal .d:hover{border-color:var(--border-hover)}
+.cal .d.fora{opacity:.35}
+.cal .d.hj{border-color:var(--lime);box-shadow:0 0 0 1px var(--lime) inset}
+.cal .d .n{font-size:13px;font-weight:600;color:var(--text-secondary)}
+.cal .d.hj .n{color:var(--lime)}
+.cal .d .it{font-size:12px;line-height:1.3;padding:3px 6px;border-radius:6px;background:var(--surface);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal .d .it.en{background:rgba(193,253,66,.12);color:var(--text-primary);box-shadow:inset 2px 0 0 var(--lime)}
+.cal .d .it.atras{background:rgba(255,95,87,.12);box-shadow:inset 2px 0 0 #ff7a72}
+.cal .d .it.ok{color:var(--text-muted);text-decoration:line-through;background:none;padding-left:0}
+.cal .d .mais{font-size:11px;color:var(--text-muted)}
+.cal-lista{display:none}
+.cal-leg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-top:14px}
+.cal-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+@media (max-width:700px){.cal{display:none}.cal-lista{display:block}.cal-lista .dl{display:flex;gap:14px;padding:12px 4px;border-bottom:1px solid var(--border-soft);cursor:pointer;width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left;font:inherit;color:inherit}.cal-lista .dl .dn{flex:none;width:46px;font-size:12px;color:var(--text-muted);text-transform:capitalize}.cal-lista .dl .dn b{display:block;font-size:20px;color:var(--text-primary);line-height:1.1}.cal-lista .dl.hj .dn b{color:var(--lime)}.cal-lista .dl .its{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.cal-lista .dl .it{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cal-lista .dl .it i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px;background:var(--border)}.cal-lista .dl .it.en i{background:var(--lime)}.cal-lista .dl .it.atras i{background:#ff7a72}.cal-lista .dl .it.ok i{background:none;border:1px solid var(--border)}.cal-lista .dl .it.ok{color:var(--text-muted);text-decoration:line-through}}
 .fin-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
 .fin-nav strong{font-size:17px;min-width:180px}
 .fin-nav strong::first-letter{text-transform:uppercase}
@@ -170,6 +197,7 @@ __EXTRA_CSS__
 .ag-add{flex-direction:column}
 .ag-add input{flex:none;width:100%}
 .ag-add .btn{width:100%}
+.ag-add .ag-prazo{justify-content:space-between}
 .tarefa{flex-wrap:wrap}
 .tarefa .tx{flex:1 1 0;min-width:0}
 .tarefa .ac{width:100%;justify-content:flex-end}
@@ -1020,6 +1048,9 @@ let agDia = null;
 const porOrdem = (a, b) => (a.ordem || 0) - (b.ordem || 0) || a.data.localeCompare(b.data) || String(a.created_at).localeCompare(String(b.created_at));
 const pendHoje = () => S.tar.filter(x => !x.feita_em && x.data <= hoje()).sort(porOrdem);
 const feitasEm = d => S.tar.filter(x => x.feita_em && new Date(x.feita_em).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) === d);
+const diaCurto = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit' }).replace('.', '');
+const prazoChip = x => { if (!x.prazo || x.feita_em) return ''; const h = hoje(), c = x.prazo < h ? 'atras' : x.prazo === h ? 'hoje' : '';
+  return `<span class="pz-chip ${c}">${x.prazo < h ? 'Entrega atrasada · ' + diaCurto(x.prazo) : x.prazo === h ? 'Entrega hoje' : x.prazo === addDias(h, 1) ? 'Entrega amanhã' : 'Entrega ' + diaCurto(x.prazo)}</span>`; };
 const diaLongo = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
 function tarefasDo(d) {
   const h = hoje();
@@ -1028,16 +1059,44 @@ function tarefasDo(d) {
   return { pend:[], ok:feitasEm(d) };
 }
 const tarefaHtml = (x, curto, i, n) => { const h = hoje(), atras = !x.feita_em && x.data < h, mover = !curto && !x.feita_em && n > 1;
-  return `<div class="tarefa ${x.feita_em ? 'ok' : ''}" data-tid="${x.id}">${mover ? `<div class="mv"><button class="alca" type="button" data-alca="1" aria-label="Arrastar para mudar a ordem" title="Arraste para mudar a ordem">⋮⋮</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="-1" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="1" aria-label="Descer" ${i === n - 1 ? 'disabled' : ''}>↓</button></div>` : ''}<input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${atras ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
+  return `<div class="tarefa ${x.feita_em ? 'ok' : ''}" data-tid="${x.id}">${mover ? `<div class="mv"><button class="alca" type="button" data-alca="1" aria-label="Arrastar para mudar a ordem" title="Arraste para mudar a ordem">⋮⋮</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="-1" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="1" aria-label="Descer" ${i === n - 1 ? 'disabled' : ''}>↓</button></div>` : ''}<input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${atras && !x.prazo ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}${prazoChip(x)}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-prazo" data-id="${x.id}" type="button">${x.prazo ? 'Mudar entrega' : 'Data de entrega'}</button><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
+let agVis = 'dia', agMes = null;
+/* O que aparece em cada dia do mês: entregas no dia do prazo, tarefas agendadas no próprio dia e o que foi concluído. */
+function doDia(d) {
+  const h = hoje(), its = [];
+  S.tar.forEach(x => {
+    if (x.feita_em) { if (feitasEm(d).includes(x)) its.push({ x, k:'ok' }); return; }
+    if (x.prazo) { if (x.prazo === d) its.push({ x, k:x.prazo < h ? 'atras' : 'en' }); return; }
+    if ((x.data > h && x.data === d) || (x.data <= h && d === h)) its.push({ x, k:'' });
+  });
+  const pe = { atras:0, en:1, '':2, ok:3 }; return its.sort((a, b) => pe[a.k] - pe[b.k] || porOrdem(a.x, b.x));
+}
+function agendaMes() {
+  const h = hoje(), m = agMes || h.slice(0, 7), ini = new Date(m + '-01T12:00:00'), off = (ini.getDay() + 6) % 7;
+  const nd = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), dias = [];
+  for (let i = -off; i < Math.ceil((off + nd) / 7) * 7 - off; i++) dias.push(addDias(m + '-01', i));
+  const cel = d => { const its = doDia(d), vis = its.slice(0, 4);
+    return `<button class="d ${d.slice(0, 7) !== m ? 'fora' : ''} ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button" aria-label="${diaLongo(d)}: ${its.length} ${its.length === 1 ? 'tarefa' : 'tarefas'}"><span class="n">${+d.slice(8)}</span>${vis.map(({ x, k }) => `<span class="it ${k}" title="${esc(x.texto)}">${esc(x.texto)}</span>`).join('')}${its.length > 4 ? `<span class="mais">+ ${its.length - 4}</span>` : ''}</button>`; };
+  const lista = dias.filter(d => d.slice(0, 7) === m && (d >= h || doDia(d).length)).map(d => { const its = doDia(d); if (!its.length && d !== h) return '';
+    return `<button class="dl ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button"><span class="dn">${new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short' }).replace('.', '')}<b>${+d.slice(8)}</b></span><span class="its">${its.map(({ x, k }) => `<span class="it ${k}"><i></i>${esc(x.texto)}</span>`).join('') || '<span class="it" style="color:var(--text-muted)">Nada para hoje</span>'}</span></button>`; }).join('');
+  return `<div class="ag-nav"><button class="btn btn-secondary btn-sm" data-a="ag-mes" data-v="-1" type="button" aria-label="Mês anterior">‹</button><strong>${mesNome(m)}</strong><button class="btn btn-secondary btn-sm" data-a="ag-mes" data-v="1" type="button" aria-label="Próximo mês">›</button>${m === h.slice(0, 7) ? '' : '<button class="btn btn-secondary btn-sm hj" data-a="ag-mes" data-v="0" type="button">Voltar para este mês</button>'}</div>
+    <div class="panel"><div class="cal">${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(w => `<span class="wd">${w}</span>`).join('')}${dias.map(cel).join('')}</div>
+    <div class="cal-lista">${lista || '<p style="font-size:14px;color:var(--text-muted)">Nenhuma tarefa neste mês.</p>'}</div>
+    <div class="cal-leg"><span><i style="background:var(--lime)"></i>Entrega</span><span><i style="background:#ff7a72"></i>Entrega atrasada</span><span><i style="background:var(--surface);border:1px solid var(--border)"></i>Tarefa do dia</span><span>Clique num dia para abrir.</span></div></div>`;
+}
 V.agenda = () => {
   const h = hoje(), d = agDia || h, { pend, ok } = tarefasDo(d), total = pend.length + ok.length, passado = d < h;
-  return head('Agenda', 'O que você precisa fazer. O que não for concluído passa sozinho para o dia seguinte.') +
+  const vis = `<div class="ag-vis" role="tablist"><button class="${agVis === 'dia' ? 'on' : ''}" data-a="ag-vis" data-v="dia" type="button" role="tab" aria-selected="${agVis === 'dia'}">Dia</button><button class="${agVis === 'mes' ? 'on' : ''}" data-a="ag-vis" data-v="mes" type="button" role="tab" aria-selected="${agVis === 'mes'}">Mês</button></div>`;
+  if (agVis === 'mes') return head('Agenda', 'Visão do mês: as entregas aparecem no dia do prazo.') + vis + agendaMes();
+  const entregas = d === h ? [] : S.tar.filter(x => !x.feita_em && x.prazo === d && x.data !== d).sort(porOrdem);
+  return head('Agenda', 'O que você precisa fazer. O que não for concluído passa sozinho para o dia seguinte.') + vis +
     `<div class="ag-nav"><button class="btn btn-secondary btn-sm" data-a="ag-dia" data-v="-1" type="button" aria-label="Dia anterior">‹</button><strong>${d === h ? 'Hoje, ' : ''}${diaLongo(d)}</strong><button class="btn btn-secondary btn-sm" data-a="ag-dia" data-v="1" type="button" aria-label="Próximo dia">›</button>${d === h ? '' : '<button class="btn btn-secondary btn-sm hj" data-a="ag-dia" data-v="0" type="button">Voltar para hoje</button>'}</div>
     <div class="panel">
-      ${passado ? '' : `<form class="ag-add" data-s="tar-add"><input id="tarNova" maxlength="500" placeholder="${d === h ? 'O que você precisa fazer hoje?' : 'Adicionar tarefa para este dia'}" autocomplete="off"><button class="btn btn-primary" type="submit">Adicionar</button></form>`}
+      ${passado ? '' : `<form class="ag-add" data-s="tar-add"><input id="tarNova" maxlength="500" placeholder="${d === h ? 'O que você precisa fazer hoje?' : 'Adicionar tarefa para este dia'}" autocomplete="off"><label class="ag-prazo" title="Opcional: a tarefa aparece todo dia até ser feita e fica marcada no dia da entrega">Entrega <input type="date" id="tarPrazo" min="${d}" aria-label="Data de entrega (opcional)"></label><button class="btn btn-primary" type="submit">Adicionar</button></form>`}
       ${total ? `<div style="font-size:13px;color:var(--text-secondary)">${ok.length} de ${total} ${total === 1 ? 'concluída' : 'concluídas'}</div><div class="prog"><div style="width:${total ? ok.length / total * 100 : 0}%"></div></div>` : ''}
       <div id="agPend">${pend.map((x, i) => tarefaHtml(x, false, i, pend.length)).join('')}</div>${ok.map(x => tarefaHtml(x)).join('')}
       ${total ? '' : `<p style="font-size:14px;color:var(--text-muted);padding:8px 0">${passado ? 'Nenhuma tarefa concluída neste dia.' : 'Nada por aqui ainda.'}</p>`}
+      ${entregas.length ? `<h3 style="font-size:13px;font-weight:600;color:var(--text-secondary);margin:22px 0 4px">Com entrega neste dia</h3>${entregas.map(x => tarefaHtml(x, true)).join('')}` : ''}
       ${passado ? '<p class="hint">Dias anteriores mostram o que foi concluído. O que ficou em aberto aparece em Hoje.</p>' : ''}
     </div>`;
 };
@@ -1180,6 +1239,13 @@ const A = {
     </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit" id="v_ok">${v ? 'Enviar nova versão' : 'Criar prévia'}</button></div></form>`);
   },
   'ag-dia'(d) { const h = hoje(); agDia = d.v === '0' ? null : addDias(agDia || h, +d.v); if (agDia === h) agDia = null; route(); },
+  'ag-vis'(d) { agVis = d.v; route(); },
+  'ag-mes'(d) { const m = mesAtual(); agMes = d.v === '0' ? null : mesAdd(agMes || m, +d.v); if (agMes === m) agMes = null; route(); },
+  'ag-ir'(d) { agVis = 'dia'; agDia = d.v === hoje() ? null : d.v; route(); scrollTo(0, 0); },
+  'tar-prazo'(d) { const x = S.tar.find(y => y.id === d.id);
+    modal(mhead('Data de entrega', esc(x.texto)) + `<form data-s="tar-prazo" data-id="${x.id}"><div class="modal-body"><div class="form-group"><label for="tp_d">Entregar até</label><input type="date" id="tp_d" value="${x.prazo || ''}" min="${hoje()}" required></div><p class="hint">A tarefa continua aparecendo todo dia em Hoje até ser concluída, e fica marcada no dia da entrega na visão do mês.</p></div>
+      <div class="modal-foot">${x.prazo ? '<button class="btn btn-ghost" data-a="tar-prazo-rm" data-id="' + x.id + '" type="button" style="margin-right:auto">Tirar data</button>' : ''}<button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar</button></div></form>`); },
+  async 'tar-prazo-rm'(d) { await patch('tar', d.id, { prazo:null }); closeModal(); await sync('Data de entrega removida'); },
   async 'tar-amanha'(d) { const x = S.tar.find(y => y.id === d.id), base = (agDia || hoje()) > hoje() ? x.data : hoje(); await patch('tar', d.id, { data:addDias(base, 1) }); await sync('Passou para o dia seguinte'); },
   async 'tar-mv'(d) { const ids = [...document.querySelectorAll('#agPend .tarefa')].map(el => el.dataset.tid), i = ids.indexOf(d.id), j = i + +d.v;
     if (i < 0 || j < 0 || j >= ids.length) return; [ids[i], ids[j]] = [ids[j], ids[i]]; await salvaOrdem(ids); },
@@ -1301,11 +1367,13 @@ async function payPatch(id, body, msg, keep) {
   if (keep) payModal(S.pro.find(p => String(p.id) === String(id))); 
 }
 const F = {
+  async 'tar-prazo'(form) { const v = $('tp_d').value; if (!v) return; await patch('tar', form.dataset.id, { prazo:v }); closeModal(); await sync('Entrega marcada para ' + diaCurto(v)); },
   async 'tar-add'(form) {
     const inp = form.querySelector('#tarNova'), texto = inp.value.trim(); if (!texto) return inp.focus();
     const d = location.hash.startsWith('#/agenda') && agDia && agDia > hoje() ? agDia : hoje();
+    const pz = form.querySelector('#tarPrazo'), prazo = pz && pz.value && pz.value >= d ? pz.value : null;
     const fim = Math.max(0, ...S.tar.filter(x => !x.feita_em).map(x => x.ordem || 0)) + 10;
-    await db('central_tarefas', 'POST', { texto:texto.slice(0, 500), data:d, ordem:fim }); await sync('Tarefa adicionada');
+    await db('central_tarefas', 'POST', { texto:texto.slice(0, 500), data:d, ordem:fim, prazo }); await sync(prazo ? 'Tarefa adicionada, com entrega ' + diaCurto(prazo) : 'Tarefa adicionada');
     const n = $('tarNova'); if (n) n.focus();
   },
   async 'pin-ok'(form) {
