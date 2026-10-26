@@ -108,6 +108,14 @@ __EXTRA_CSS__
 .tarefa input[type=checkbox]{width:22px;height:22px;margin-top:1px;accent-color:var(--lime);flex:none;cursor:pointer}
 .tarefa .tx{flex:1;font-size:15px;color:var(--text-primary);line-height:1.45;overflow-wrap:anywhere}
 .tarefa .tx small{display:block;font-size:12px;color:var(--amber);margin-top:3px}
+.tarefa .tx{min-width:0}
+.tarefa .ds{display:block;width:100%;max-width:100%;margin-top:2px;padding:0;border:0;background:none;font:inherit;font-size:13px;line-height:1.4;color:var(--text-muted);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;text-decoration:none}
+.tarefa.ok .ds{text-decoration:none}
+.tarefa .ds.vz{opacity:0;width:auto;transition:opacity .15s}
+.tarefa:hover .ds.vz,.tarefa .ds.vz:focus-visible{opacity:.8}
+@media (hover:none){.tarefa .ds.vz{opacity:.6}}
+.tarefa .ds-ed{display:block;width:100%;margin-top:6px;min-height:58px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);font:inherit;font-size:13px;line-height:1.45;resize:vertical;outline:none}
+.tarefa .ds-ed:focus{border-color:var(--lime)}
 .tarefa.ok .tx{color:var(--text-muted);text-decoration:line-through}
 .tarefa .ac{display:flex;gap:6px;flex:none}
 .tarefa .mv{display:flex;align-items:center;gap:2px;flex:none;margin:-4px 0 0 -6px}
@@ -156,6 +164,9 @@ __EXTRA_CSS__
 .reu-it .tt a{color:var(--text-primary);font-size:15px;text-decoration:none}
 .reu-it .tt a:hover{text-decoration:underline}
 .reu-it .tt small{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
+.reu-lk{display:block;font-size:12px;color:#9dbdff;margin-top:2px;user-select:all;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reu-bt{display:flex;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:600px){.reu-it{flex-wrap:wrap}.reu-bt{width:100%;padding-left:72px;justify-content:flex-start}}
 .reu-vz{font-size:14px;color:var(--text-muted);padding:8px 0}
 .reu-f{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted);margin-top:10px}
 .lk{background:none;border:0;padding:0;color:var(--text-secondary);font:inherit;text-decoration:underline;cursor:pointer}
@@ -1082,7 +1093,7 @@ function tarefasDo(d) {
   return { pend:[], ok:feitasEm(d) };
 }
 const tarefaHtml = (x, curto, i, n) => { const h = hoje(), atras = !x.feita_em && x.data < h, mover = !curto && !x.feita_em && n > 1;
-  return `<div class="tarefa ${x.feita_em ? 'ok' : ''}" data-tid="${x.id}">${mover ? `<div class="mv"><button class="alca" type="button" data-alca="1" aria-label="Arrastar para mudar a ordem" title="Arraste para mudar a ordem">⋮⋮</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="-1" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="1" aria-label="Descer" ${i === n - 1 ? 'disabled' : ''}>↓</button></div>` : ''}<input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${atras && !x.prazo ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}${prazoChip(x)}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-prazo" data-id="${x.id}" type="button">${x.prazo ? 'Mudar entrega' : 'Data de entrega'}</button><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
+  return `<div class="tarefa ${x.feita_em ? 'ok' : ''}" data-tid="${x.id}">${mover ? `<div class="mv"><button class="alca" type="button" data-alca="1" aria-label="Arrastar para mudar a ordem" title="Arraste para mudar a ordem">⋮⋮</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="-1" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="1" aria-label="Descer" ${i === n - 1 ? 'disabled' : ''}>↓</button></div>` : ''}<input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${x.feita_em ? (x.descricao ? `<span class="ds" title="${esc(x.descricao)}">${esc(x.descricao)}</span>` : '') : `<button class="ds ${x.descricao ? '' : 'vz'}" data-a="tar-ds" data-id="${x.id}" type="button" title="${esc(x.descricao || 'Adicionar descrição')}">${x.descricao ? esc(x.descricao) : '+ descrição'}</button>`}${atras && !x.prazo ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}${prazoChip(x)}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-prazo" data-id="${x.id}" type="button">${x.prazo ? 'Mudar entrega' : 'Data de entrega'}</button><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
 /* ---- Google Agenda: marca reuniões com convite e mostra os eventos na agenda ---- */
 const GCID = '964246386893-4n722i8k6j4qenjkboc8i89bp16dmmha.apps.googleusercontent.com', GSCOPE = 'https://www.googleapis.com/auth/calendar.events', GKEY = 'dade-gcal';
 let gTok = (() => { try { const t = JSON.parse(localStorage.getItem(GKEY) || 'null'); return t && t.exp > Date.now() ? t : null; } catch (e) { return null; } })();
@@ -1126,7 +1137,7 @@ const evHora = e => e.inteiro ? 'Dia todo' : spHora(e.ini);
 function reunioesHtml(d) {
   if (!gTok) return `<div class="panel reu-off"><div><b>Reuniões do Google Agenda</b><small>${gJaLigou() ? 'A conexão com o Google expirou. Conecte de novo para ver e marcar reuniões.' : 'Conecte seu Google Agenda para ver as reuniões aqui e marcar novas com convite.'}</small></div><button class="btn btn-secondary btn-sm" data-a="g-ligar" type="button">${gJaLigou() ? 'Reconectar Google' : 'Conectar Google Agenda'}</button></div>`;
   const ev = evDia(d);
-  return `<div class="panel reu"><div class="reu-h"><b>Reuniões</b><span>${gEv.em ? '' : 'Carregando…'}</span></div>${ev.map(e => `<div class="reu-it"><span class="hr">${evHora(e)}${e.inteiro ? '' : `<small>${spHora(e.fim)}</small>`}</span><div class="tt"><a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.titulo)}</a><small>${[e.meet ? 'Google Meet' : '', e.local, e.conv ? e.conv + (e.conv === 1 ? ' convidado' : ' convidados') : ''].filter(Boolean).map(esc).join(' · ')}</small></div>${e.meet ? `<a class="btn btn-secondary btn-sm" href="${esc(e.meet)}" target="_blank" rel="noopener">Entrar</a>` : ''}</div>`).join('') || (gEv.em ? '<p class="reu-vz">Nenhuma reunião neste dia.</p>' : '')}
+  return `<div class="panel reu"><div class="reu-h"><b>Reuniões</b><span>${gEv.em ? '' : 'Carregando…'}</span></div>${ev.map(e => `<div class="reu-it"><span class="hr">${evHora(e)}${e.inteiro ? '' : `<small>${spHora(e.fim)}</small>`}</span><div class="tt"><a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.titulo)}</a><small>${[e.local, e.conv ? e.conv + (e.conv === 1 ? ' convidado' : ' convidados') : ''].filter(Boolean).map(esc).join(' · ')}</small>${e.meet ? `<span class="reu-lk">${esc(e.meet.replace(/^https?:\/\//, ''))}</span>` : ''}</div>${e.meet ? `<span class="reu-bt"><button class="btn btn-ghost btn-sm" data-a="copy-text" data-text="${esc(e.meet)}" data-msg="Link da reunião copiado" type="button">Copiar link</button><a class="btn btn-secondary btn-sm" href="${esc(e.meet)}" target="_blank" rel="noopener">Entrar</a></span>` : ''}</div>`).join('') || (gEv.em ? '<p class="reu-vz">Nenhuma reunião neste dia.</p>' : '')}
     <div class="reu-f"><span>Google Agenda conectado</span><button class="lk" data-a="g-sair" type="button">Desconectar</button></div></div>`;
 }
 let agVis = 'dia', agMes = null;
@@ -1321,6 +1332,17 @@ const A = {
       <div class="form-group"><label>Onde</label><div class="reu-tipo"><label><input type="radio" name="r_tipo" value="meet" checked data-c="reu-tipo"> Google Meet</label><label><input type="radio" name="r_tipo" value="local" data-c="reu-tipo"> Presencial</label></div><input id="r_l" maxlength="200" placeholder="Endereço" style="margin-top:10px" hidden></div>
       <div class="form-group"><label for="r_x">Observação</label><textarea id="r_x" rows="3" maxlength="2000" placeholder="Pauta ou informações para os convidados (opcional)"></textarea></div>
     </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit" id="r_ok">Marcar e enviar convite</button></div></form>`);
+  },
+  'tar-ds'(d, el) {
+    const x = S.tar.find(y => y.id === d.id), ta = document.createElement('textarea');
+    ta.className = 'ds-ed'; ta.maxLength = 2000; ta.value = x.descricao || ''; ta.placeholder = 'Detalhes da tarefa'; ta.setAttribute('aria-label', 'Descrição de ' + x.texto);
+    el.replaceWith(ta); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    let feito = false;
+    const salvar = async cancela => { if (feito) return; feito = true; const v = ta.value.trim() || null;
+      if (cancela || v === (x.descricao || null)) { const y = scrollY; route(); scrollTo(0, y); return; }
+      await run(async () => { await patch('tar', x.id, { descricao:v }); x.descricao = v; const y = scrollY; route(); scrollTo(0, y); toast(v ? 'Descrição salva' : 'Descrição removida'); }); };
+    ta.addEventListener('blur', () => salvar());
+    ta.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); salvar(true); } if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ta.blur(); } });
   },
   'ag-vis'(d) { agVis = d.v; route(); },
   'ag-mes'(d) { const m = mesAtual(); agMes = d.v === '0' ? null : mesAdd(agMes || m, +d.v); if (agMes === m) agMes = null; route(); },
