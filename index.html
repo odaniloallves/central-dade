@@ -509,6 +509,27 @@ td[data-label="Serviços"]{min-width:150px}
 .cal .d .it.atras{background:rgba(255,95,87,.12);box-shadow:inset 2px 0 0 #ff7a72}
 .cal .d .it.ok{color:var(--text-muted);text-decoration:line-through;background:none;padding-left:0}
 .cal .d .mais{font-size:11px;color:var(--text-muted)}
+.cal .d .it.ev{background:rgba(122,167,255,.14);box-shadow:inset 2px 0 0 #7aa7ff}
+.cal-lista .dl .it.ev i{background:#7aa7ff}
+.reu,.reu-off{margin-bottom:16px}
+.reu-off{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.reu-off b,.reu-h b{font-size:15px}
+.reu-off small{display:block;font-size:13px;color:var(--text-secondary);margin-top:3px}
+.reu-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.reu-h span{font-size:12px;color:var(--text-muted)}
+.reu-it{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-soft)}
+.reu-it .hr{flex:none;width:58px;font-size:15px;font-weight:600;color:#9dbdff}
+.reu-it .hr small{display:block;font-size:12px;font-weight:400;color:var(--text-muted)}
+.reu-it .tt{flex:1;min-width:0}
+.reu-it .tt a{color:var(--text-primary);font-size:15px;text-decoration:none}
+.reu-it .tt a:hover{text-decoration:underline}
+.reu-it .tt small{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
+.reu-vz{font-size:14px;color:var(--text-muted);padding:8px 0}
+.reu-f{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted);margin-top:10px}
+.lk{background:none;border:0;padding:0;color:var(--text-secondary);font:inherit;text-decoration:underline;cursor:pointer}
+.reu-tipo{display:flex;gap:8px;flex-wrap:wrap}
+.reu-tipo label{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;font-size:14px}
+.reu-tipo input[type=radio]{accent-color:var(--lime);width:18px!important;height:18px!important;min-height:0!important;padding:0!important;margin:0;flex:none;border:0;background:none;box-shadow:none!important}
 .cal-lista{display:none}
 .cal-leg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-top:14px}
 .cal-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
@@ -1429,6 +1450,53 @@ function tarefasDo(d) {
 }
 const tarefaHtml = (x, curto, i, n) => { const h = hoje(), atras = !x.feita_em && x.data < h, mover = !curto && !x.feita_em && n > 1;
   return `<div class="tarefa ${x.feita_em ? 'ok' : ''}" data-tid="${x.id}">${mover ? `<div class="mv"><button class="alca" type="button" data-alca="1" aria-label="Arrastar para mudar a ordem" title="Arraste para mudar a ordem">⋮⋮</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="-1" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-a="tar-mv" data-id="${x.id}" data-v="1" aria-label="Descer" ${i === n - 1 ? 'disabled' : ''}>↓</button></div>` : ''}<input type="checkbox" data-c="tar-ck" data-id="${x.id}" ${x.feita_em ? 'checked' : ''} aria-label="Concluir: ${esc(x.texto)}"><div class="tx">${esc(x.texto)}${atras && !x.prazo ? `<small>Ficou de ${dmy(x.data)}</small>` : ''}${prazoChip(x)}</div>${curto || x.feita_em ? '' : `<div class="ac"><button class="btn btn-ghost btn-sm" data-a="tar-prazo" data-id="${x.id}" type="button">${x.prazo ? 'Mudar entrega' : 'Data de entrega'}</button><button class="btn btn-ghost btn-sm" data-a="tar-amanha" data-id="${x.id}" type="button">Amanhã</button><button class="btn btn-ghost btn-sm" data-a="tar-del" data-id="${x.id}" type="button" aria-label="Excluir tarefa">Excluir</button></div>`}</div>`; };
+/* ---- Google Agenda: marca reuniões com convite e mostra os eventos na agenda ---- */
+const GCID = '964246386893-4n722i8k6j4qenjkboc8i89bp16dmmha.apps.googleusercontent.com', GSCOPE = 'https://www.googleapis.com/auth/calendar.events', GKEY = 'dade-gcal';
+let gTok = (() => { try { const t = JSON.parse(localStorage.getItem(GKEY) || 'null'); return t && t.exp > Date.now() ? t : null; } catch (e) { return null; } })();
+const gJaLigou = () => { try { return !!localStorage.getItem(GKEY + '-on'); } catch (e) { return false; } };
+let gEv = { faixa:'', itens:[], em:0, carregando:false };
+function gScript() { return window.google && google.accounts && google.accounts.oauth2 ? Promise.resolve() : (gScript.p = gScript.p || new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = ok; sc.onerror = () => { gScript.p = null; no(new Error('gsi')); }; document.head.appendChild(sc); })); }
+/* Precisa ser chamado direto do clique, senão o navegador bloqueia a janela do Google. */
+function gConectar() {
+  if (!(window.google && google.accounts && google.accounts.oauth2)) { gScript().catch(() => {}); return Promise.reject(new Error('carregando')); }
+  return new Promise((ok, no) => {
+    const cli = google.accounts.oauth2.initTokenClient({ client_id:GCID, scope:GSCOPE, callback:r => {
+      if (r.error || !r.access_token) return no(new Error(r.error || 'negado'));
+      gTok = { t:r.access_token, exp:Date.now() + ((+r.expires_in || 3600) - 60) * 1000 };
+      try { localStorage.setItem(GKEY, JSON.stringify(gTok)); localStorage.setItem(GKEY + '-on', '1'); } catch (e) {}
+      gEv.em = 0; ok(gTok); }, error_callback:e => no(new Error((e && e.type) || 'fechou')) });
+    cli.requestAccessToken({ prompt:gJaLigou() ? '' : 'consent' });
+  });
+}
+function gSair() { try { if (gTok && window.google) google.accounts.oauth2.revoke(gTok.t, () => {}); localStorage.removeItem(GKEY); localStorage.removeItem(GKEY + '-on'); } catch (e) {} gTok = null; gEv = { faixa:'', itens:[], em:0 }; }
+async function gApi(path, opt = {}) {
+  if (!gTok || gTok.exp < Date.now()) { gTok = null; throw new Error('gauth'); }
+  const r = await fetch('https://www.googleapis.com/calendar/v3/' + path, { ...opt, headers:{ Authorization:'Bearer ' + gTok.t, 'Content-Type':'application/json' } });
+  if (r.status === 401) { gTok = null; try { localStorage.removeItem(GKEY); } catch (e) {} throw new Error('gauth'); }
+  if (!r.ok) throw new Error(await r.text());
+  return r.status === 204 ? null : r.json();
+}
+const spDia = iso => new Date(iso).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' });
+const spHora = iso => new Date(iso).toLocaleTimeString('pt-BR', { timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit' });
+function gFaixa(m) { return [addDias(m + '-01', -7), addDias(m + '-01', 45)]; }
+async function gCarregar(m) {
+  if (!gTok || gEv.carregando) return;
+  const [de, ate] = gFaixa(m), faixa = de + ate; if (gEv.faixa === faixa && Date.now() - gEv.em < 90000) return;
+  gEv.carregando = true;
+  try {
+    const r = await gApi(`calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(de + 'T00:00:00-03:00')}&timeMax=${encodeURIComponent(ate + 'T23:59:59-03:00')}`);
+    gEv = { faixa, em:Date.now(), carregando:false, itens:(r.items || []).filter(e => e.status !== 'cancelled').map(e => ({ id:e.id, titulo:e.summary || '(sem título)', ini:e.start.dateTime || e.start.date, fim:e.end.dateTime || e.end.date, inteiro:!e.start.dateTime, meet:e.hangoutLink || ((e.conferenceData && e.conferenceData.entryPoints || []).find(x => x.entryPointType === 'video') || {}).uri || '', link:e.htmlLink, local:e.location || '', conv:(e.attendees || []).filter(a => !a.self).length })) };
+    if (location.hash.startsWith('#/agenda') && !$('modal').classList.contains('open')) { const y = scrollY; route(); scrollTo(0, y); }
+  } catch (e) { gEv.carregando = false; if (e.message === 'gauth' && location.hash.startsWith('#/agenda')) { const y = scrollY; route(); scrollTo(0, y); } }
+}
+const evDia = d => gEv.itens.filter(e => e.inteiro ? (d >= e.ini && d < e.fim) : spDia(e.ini) === d);
+const evHora = e => e.inteiro ? 'Dia todo' : spHora(e.ini);
+function reunioesHtml(d) {
+  if (!gTok) return `<div class="panel reu-off"><div><b>Reuniões do Google Agenda</b><small>${gJaLigou() ? 'A conexão com o Google expirou. Conecte de novo para ver e marcar reuniões.' : 'Conecte seu Google Agenda para ver as reuniões aqui e marcar novas com convite.'}</small></div><button class="btn btn-secondary btn-sm" data-a="g-ligar" type="button">${gJaLigou() ? 'Reconectar Google' : 'Conectar Google Agenda'}</button></div>`;
+  const ev = evDia(d);
+  return `<div class="panel reu"><div class="reu-h"><b>Reuniões</b><span>${gEv.em ? '' : 'Carregando…'}</span></div>${ev.map(e => `<div class="reu-it"><span class="hr">${evHora(e)}${e.inteiro ? '' : `<small>${spHora(e.fim)}</small>`}</span><div class="tt"><a href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.titulo)}</a><small>${[e.meet ? 'Google Meet' : '', e.local, e.conv ? e.conv + (e.conv === 1 ? ' convidado' : ' convidados') : ''].filter(Boolean).map(esc).join(' · ')}</small></div>${e.meet ? `<a class="btn btn-secondary btn-sm" href="${esc(e.meet)}" target="_blank" rel="noopener">Entrar</a>` : ''}</div>`).join('') || (gEv.em ? '<p class="reu-vz">Nenhuma reunião neste dia.</p>' : '')}
+    <div class="reu-f"><span>Google Agenda conectado</span><button class="lk" data-a="g-sair" type="button">Desconectar</button></div></div>`;
+}
 let agVis = 'dia', agMes = null;
 /* O que aparece em cada dia do mês: entregas no dia do prazo, tarefas agendadas no próprio dia e o que foi concluído. */
 function doDia(d) {
@@ -1444,21 +1512,25 @@ function agendaMes() {
   const h = hoje(), m = agMes || h.slice(0, 7), ini = new Date(m + '-01T12:00:00'), off = (ini.getDay() + 6) % 7;
   const nd = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), dias = [];
   for (let i = -off; i < Math.ceil((off + nd) / 7) * 7 - off; i++) dias.push(addDias(m + '-01', i));
-  const cel = d => { const its = doDia(d), vis = its.slice(0, 4);
-    return `<button class="d ${d.slice(0, 7) !== m ? 'fora' : ''} ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button" aria-label="${diaLongo(d)}: ${its.length} ${its.length === 1 ? 'tarefa' : 'tarefas'}"><span class="n">${+d.slice(8)}</span>${vis.map(({ x, k }) => `<span class="it ${k}" title="${esc(x.texto)}">${esc(x.texto)}</span>`).join('')}${its.length > 4 ? `<span class="mais">+ ${its.length - 4}</span>` : ''}</button>`; };
-  const lista = dias.filter(d => d.slice(0, 7) === m && (d >= h || doDia(d).length)).map(d => { const its = doDia(d); if (!its.length && d !== h) return '';
-    return `<button class="dl ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button"><span class="dn">${new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short' }).replace('.', '')}<b>${+d.slice(8)}</b></span><span class="its">${its.map(({ x, k }) => `<span class="it ${k}"><i></i>${esc(x.texto)}</span>`).join('') || '<span class="it" style="color:var(--text-muted)">Nada para hoje</span>'}</span></button>`; }).join('');
+  const todos = d => [...evDia(d).map(e => ({ t:evHora(e) + ' ' + e.titulo, k:'ev' })), ...doDia(d).map(({ x, k }) => ({ t:x.texto, k }))];
+  const cel = d => { const its = todos(d), vis = its.slice(0, 4);
+    return `<button class="d ${d.slice(0, 7) !== m ? 'fora' : ''} ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button" aria-label="${diaLongo(d)}: ${its.length} ${its.length === 1 ? 'item' : 'itens'}"><span class="n">${+d.slice(8)}</span>${vis.map(({ t, k }) => `<span class="it ${k}" title="${esc(t)}">${esc(t)}</span>`).join('')}${its.length > 4 ? `<span class="mais">+ ${its.length - 4}</span>` : ''}</button>`; };
+  const lista = dias.filter(d => d.slice(0, 7) === m && (d >= h || todos(d).length)).map(d => { const its = todos(d); if (!its.length && d !== h) return '';
+    return `<button class="dl ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button"><span class="dn">${new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short' }).replace('.', '')}<b>${+d.slice(8)}</b></span><span class="its">${its.map(({ t, k }) => `<span class="it ${k}"><i></i>${esc(t)}</span>`).join('') || '<span class="it" style="color:var(--text-muted)">Nada para hoje</span>'}</span></button>`; }).join('');
   return `<div class="ag-nav"><button class="btn btn-secondary btn-sm" data-a="ag-mes" data-v="-1" type="button" aria-label="Mês anterior">‹</button><strong>${mesNome(m)}</strong><button class="btn btn-secondary btn-sm" data-a="ag-mes" data-v="1" type="button" aria-label="Próximo mês">›</button>${m === h.slice(0, 7) ? '' : '<button class="btn btn-secondary btn-sm hj" data-a="ag-mes" data-v="0" type="button">Voltar para este mês</button>'}</div>
     <div class="panel"><div class="cal">${['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(w => `<span class="wd">${w}</span>`).join('')}${dias.map(cel).join('')}</div>
     <div class="cal-lista">${lista || '<p style="font-size:14px;color:var(--text-muted)">Nenhuma tarefa neste mês.</p>'}</div>
-    <div class="cal-leg"><span><i style="background:var(--lime)"></i>Entrega</span><span><i style="background:#ff7a72"></i>Entrega atrasada</span><span><i style="background:var(--surface);border:1px solid var(--border)"></i>Tarefa do dia</span><span>Clique num dia para abrir.</span></div></div>`;
+    <div class="cal-leg">${gTok ? '<span><i style="background:#7aa7ff"></i>Reunião</span>' : ''}<span><i style="background:var(--lime)"></i>Entrega</span><span><i style="background:#ff7a72"></i>Entrega atrasada</span><span><i style="background:var(--surface);border:1px solid var(--border)"></i>Tarefa do dia</span><span>Clique num dia para abrir.</span></div></div>`;
 }
 V.agenda = () => {
   const h = hoje(), d = agDia || h, { pend, ok } = tarefasDo(d), total = pend.length + ok.length, passado = d < h;
   const vis = `<div class="ag-vis" role="tablist"><button class="${agVis === 'dia' ? 'on' : ''}" data-a="ag-vis" data-v="dia" type="button" role="tab" aria-selected="${agVis === 'dia'}">Dia</button><button class="${agVis === 'mes' ? 'on' : ''}" data-a="ag-vis" data-v="mes" type="button" role="tab" aria-selected="${agVis === 'mes'}">Mês</button></div>`;
-  if (agVis === 'mes') return head('Agenda', 'Visão do mês: as entregas aparecem no dia do prazo.') + vis + agendaMes();
-  return head('Agenda', 'O que você precisa fazer. O que não for concluído passa sozinho para o dia seguinte.') + vis +
+  const btn = '<button class="btn btn-primary" data-a="reu-form" type="button">Nova reunião</button>';
+  setTimeout(() => { gScript().catch(() => {}); gCarregar(agVis === 'mes' ? (agMes || h.slice(0, 7)) : d.slice(0, 7)); });
+  if (agVis === 'mes') return head('Agenda', 'Visão do mês: reuniões e entregas em cada dia.', btn) + vis + agendaMes();
+  return head('Agenda', 'O que você precisa fazer. O que não for concluído passa sozinho para o dia seguinte.', btn) + vis +
     `<div class="ag-nav"><button class="btn btn-secondary btn-sm" data-a="ag-dia" data-v="-1" type="button" aria-label="Dia anterior">‹</button><strong>${d === h ? 'Hoje, ' : ''}${diaLongo(d)}</strong><button class="btn btn-secondary btn-sm" data-a="ag-dia" data-v="1" type="button" aria-label="Próximo dia">›</button>${d === h ? '' : '<button class="btn btn-secondary btn-sm hj" data-a="ag-dia" data-v="0" type="button">Voltar para hoje</button>'}</div>
+    ${reunioesHtml(d)}
     <div class="panel">
       ${passado ? '' : `<form class="ag-add" data-s="tar-add"><input id="tarNova" maxlength="500" placeholder="${d === h ? 'O que você precisa fazer hoje?' : 'Adicionar tarefa para este dia'}" autocomplete="off"><label class="ag-prazo" title="Opcional: a tarefa aparece na agenda no dia da entrega">Entrega <input type="date" id="tarPrazo" min="${d}" aria-label="Data de entrega (opcional)"></label><button class="btn btn-primary" type="submit">Adicionar</button></form>`}
       ${total ? `<div style="font-size:13px;color:var(--text-secondary)">${ok.length} de ${total} ${total === 1 ? 'concluída' : 'concluídas'}</div><div class="prog"><div style="width:${total ? ok.length / total * 100 : 0}%"></div></div>` : ''}
@@ -1606,6 +1678,21 @@ const A = {
     </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit" id="v_ok">${v ? 'Enviar nova versão' : 'Criar prévia'}</button></div></form>`);
   },
   'ag-dia'(d) { const h = hoje(); agDia = d.v === '0' ? null : addDias(agDia || h, +d.v); if (agDia === h) agDia = null; route(); },
+  'g-ligar'() { return gConectar().then(() => { toast('Google Agenda conectado'); route(); }).catch(e => toast(e.message === 'carregando' ? 'Carregando o Google. Clique de novo em um segundo.' : 'Não foi possível conectar ao Google.')); },
+  'g-sair'() { if (!confirm('Desconectar o Google Agenda da central?')) return; gSair(); route(); toast('Google Agenda desconectado'); },
+  'reu-form'(d) {
+    if (!gTok) return gConectar().then(() => { route(); A['reu-form'](d); }).catch(e => toast(e.message === 'carregando' ? 'Carregando o Google. Clique de novo em um segundo.' : 'Para marcar reuniões, conecte o Google Agenda.'));
+    const dia = agDia && agDia > hoje() ? agDia : hoje(), agora = new Date(), hr = dia === hoje() ? Math.min(23, agora.getHours() + 1) : 10;
+    const clis = live(S.cli).filter(c => c.email).sort((a, b) => a.nome.localeCompare(b.nome));
+    modal(mhead('Nova reunião', 'Vai direto para o seu Google Agenda e o Google manda o convite por e-mail.') + `<form data-s="reu-save"><div class="modal-body">
+      <div class="form-group"><label for="r_t">Assunto</label><input id="r_t" maxlength="120" required placeholder="Ex.: Apresentação da proposta"></div>
+      <div class="form-group"><label for="r_c">Cliente</label><select id="r_c" data-c="reu-cli"><option value="">Nenhum</option>${clis.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
+      <div class="form-group"><label for="r_e">Convidados</label><input id="r_e" placeholder="email@cliente.com, outro@email.com" autocomplete="off"><span class="hint">Separe os e-mails por vírgula. Ao escolher o cliente, o e-mail dele entra aqui.</span></div>
+      <div class="form-row"><div class="form-group"><label for="r_d">Data</label><input type="date" id="r_d" value="${dia}" min="${hoje()}" required></div><div class="form-group"><label for="r_h">Horário</label><input type="time" id="r_h" value="${String(hr).padStart(2, '0')}:00" step="300" required></div><div class="form-group"><label for="r_du">Duração</label><select id="r_du">${[[30, '30 min'], [45, '45 min'], [60, '1 hora'], [90, '1h30'], [120, '2 horas']].map(([v, l]) => `<option value="${v}" ${v === 60 ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div class="form-group"><label>Onde</label><div class="reu-tipo"><label><input type="radio" name="r_tipo" value="meet" checked data-c="reu-tipo"> Google Meet</label><label><input type="radio" name="r_tipo" value="local" data-c="reu-tipo"> Presencial</label></div><input id="r_l" maxlength="200" placeholder="Endereço" style="margin-top:10px" hidden></div>
+      <div class="form-group"><label for="r_x">Observação</label><textarea id="r_x" rows="3" maxlength="2000" placeholder="Pauta ou informações para os convidados (opcional)"></textarea></div>
+    </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit" id="r_ok">Marcar e enviar convite</button></div></form>`);
+  },
   'ag-vis'(d) { agVis = d.v; route(); },
   'ag-mes'(d) { const m = mesAtual(); agMes = d.v === '0' ? null : mesAdd(agMes || m, +d.v); if (agMes === m) agMes = null; route(); },
   'ag-ir'(d) { agVis = 'dia'; agDia = d.v === hoje() ? null : d.v; route(); scrollTo(0, 0); },
@@ -1664,6 +1751,8 @@ const C = {
   'svc-serv'(el) { const o = el.selectedOptions[0], row = el.closest('.svc-row'), cu = row.querySelector('[name=servico_custom]'); if (el.value === 'materiais_impressos' && $('p_imp')) $('p_imp').checked = true; row.querySelector('[name=cobranca]').value = o.dataset.cob; syncPay(); cu.hidden = el.value !== '__custom__'; if (!cu.hidden) cu.focus(); },
   async 'pc-pago'(el) { const l = S.plc.find(x => x.id === el.dataset.id); await patch('plc', l.id, { pago_em:el.checked ? hoje() : null }); l.pago_em = el.checked ? hoje() : null; route(); toast(el.checked ? 'Marcada como paga' : 'Voltou para a pagar'); },
   'pc-tipo'(el) { $('pc_parc').hidden = el.value !== 'parcelada'; },
+  'reu-cli'(el) { const c = cli(el.value); if (!c || !c.email) return; const inp = $('r_e'), l = inp.value.split(',').map(x => x.trim()).filter(Boolean); if (!l.some(x => x.toLowerCase() === c.email.toLowerCase())) inp.value = [...l, c.email].join(', '); if (!$('r_t').value) $('r_t').value = 'Reunião com ' + c.nome; },
+  'reu-tipo'() { const pres = document.querySelector('input[name=r_tipo]:checked').value === 'local'; $('r_l').hidden = !pres; if (pres) $('r_l').focus(); },
   'pf-arqs'(el) { const ok = [...el.files].filter(f => /^image\/(png|jpeg|webp|gif)$/.test(f.type) || (f.type === 'video/mp4' && f.size <= 10485760)); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem ou MP4 de até 10 MB.'); pfEd.push(...ok.sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric:true })).map(f => ({ f }))); el.value = ''; pfEdRender(); },
   'ent-arqs'(el) { const ok = [...el.files].filter(f => ARQ_OK.test(f.type) && f.size <= 52428800); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem, MP4, MOV ou PDF de até 50 MB.'); entArq.push(...ok); el.value = ''; entArqsRender(); },
   async 'ent-dias'(el) { const n = +el.value, c = cli(el.dataset.id); await patch('cli', c.id, { entregas_dias:n });
@@ -1734,6 +1823,21 @@ async function payPatch(id, body, msg, keep) {
   if (keep) payModal(S.pro.find(p => String(p.id) === String(id))); 
 }
 const F = {
+  async 'reu-save'(form) {
+    const titulo = $('r_t').value.trim(), dia = $('r_d').value, hora = $('r_h').value, dur = +$('r_du').value || 60, pres = document.querySelector('input[name=r_tipo]:checked').value === 'local';
+    const mails = $('r_e').value.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean), ruins = mails.filter(x => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if (!titulo) return toast('Escreva o assunto da reunião.'); if (!dia || !hora) return toast('Escolha a data e o horário.');
+    if (ruins.length) return toast('Confira este e-mail: ' + ruins[0]);
+    const ini = new Date(`${dia}T${hora}:00-03:00`), fim = new Date(ini.getTime() + dur * 60000);
+    const body = { summary:titulo, description:$('r_x').value.trim() || undefined, start:{ dateTime:ini.toISOString(), timeZone:'America/Sao_Paulo' }, end:{ dateTime:fim.toISOString(), timeZone:'America/Sao_Paulo' }, attendees:[...new Set(mails.map(x => x.toLowerCase()))].map(email => ({ email })) };
+    if (pres) body.location = $('r_l').value.trim() || undefined; else body.conferenceData = { createRequest:{ requestId:'dade-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), conferenceSolutionKey:{ type:'hangoutsMeet' } } };
+    const btn = $('r_ok'); btn.disabled = true; btn.textContent = 'Marcando…';
+    try { await gApi('calendars/primary/events?sendUpdates=all&conferenceDataVersion=1', { method:'POST', body:JSON.stringify(body) }); }
+    catch (e) { btn.disabled = false; btn.textContent = 'Marcar e enviar convite'; if (e.message === 'gauth') { closeModal(); route(); return toast('A conexão com o Google expirou. Clique em Nova reunião de novo.'); } throw e; }
+    closeModal(); gEv.em = 0; if (dia !== hoje()) { agVis = 'dia'; agDia = dia; }
+    if (location.hash !== '#/agenda') location.hash = '#/agenda'; else route();
+    toast(body.attendees.length ? `Reunião marcada. Convite enviado para ${body.attendees.length === 1 ? body.attendees[0].email : body.attendees.length + ' pessoas'}.` : 'Reunião marcada no seu Google Agenda.');
+  },
   async 'tar-prazo'(form) { const v = $('tp_d').value; if (!v) return; await patch('tar', form.dataset.id, { prazo:v }); closeModal(); await sync('Entrega marcada para ' + diaCurto(v)); },
   async 'tar-add'(form) {
     const inp = form.querySelector('#tarNova'), texto = inp.value.trim(); if (!texto) return inp.focus();
