@@ -48,4 +48,4 @@ async def main():
       await pg.click('[data-a=ag-vis][data-v=mes]'); await pg.wait_for_timeout(400); await pg.screenshot(path=f'reu_mes_{nm}.png', full_page=True)
       print(nm, 'overflow', await pg.evaluate('document.documentElement.scrollWidth>innerWidth'))
     print('ERRS', errs); await b.close()
-asyncio.run(main())
+if __name__ == "__main__": asyncio.run(main())

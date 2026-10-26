@@ -1069,7 +1069,8 @@ let agDia = null;
 const porOrdem = (a, b) => (a.ordem || 0) - (b.ordem || 0) || a.data.localeCompare(b.data) || String(a.created_at).localeCompare(String(b.created_at));
 const diaDa = x => x.prazo || x.data;
 const pendHoje = () => S.tar.filter(x => !x.feita_em && diaDa(x) <= hoje()).sort(porOrdem);
-const feitasEm = d => S.tar.filter(x => x.feita_em && new Date(x.feita_em).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }) === d);
+const FMT_DIA = new Intl.DateTimeFormat('sv-SE', { timeZone:'America/Sao_Paulo' }), spDia = iso => FMT_DIA.format(new Date(iso));
+const feitasEm = d => S.tar.filter(x => x.feita_em && spDia(x.feita_em) === d);
 const diaCurto = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit' }).replace('.', '');
 const prazoChip = x => { if (!x.prazo || x.feita_em) return ''; const h = hoje(), c = x.prazo < h ? 'atras' : x.prazo === h ? 'hoje' : '';
   return `<span class="pz-chip ${c}">${x.prazo < h ? 'Entrega atrasada · ' + diaCurto(x.prazo) : x.prazo === h ? 'Entrega hoje' : x.prazo === addDias(h, 1) ? 'Entrega amanhã' : 'Entrega ' + diaCurto(x.prazo)}</span>`; };
@@ -1108,8 +1109,7 @@ async function gApi(path, opt = {}) {
   if (!r.ok) throw new Error(await r.text());
   return r.status === 204 ? null : r.json();
 }
-const spDia = iso => new Date(iso).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' });
-const spHora = iso => new Date(iso).toLocaleTimeString('pt-BR', { timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit' });
+const FMT_HORA = new Intl.DateTimeFormat('pt-BR', { timeZone:'America/Sao_Paulo', hour:'2-digit', minute:'2-digit' }), spHora = iso => FMT_HORA.format(new Date(iso));
 function gFaixa(m) { return [addDias(m + '-01', -7), addDias(m + '-01', 45)]; }
 async function gCarregar(m) {
   if (!gTok || gEv.carregando) return;
@@ -1130,21 +1130,18 @@ function reunioesHtml(d) {
     <div class="reu-f"><span>Google Agenda conectado</span><button class="lk" data-a="g-sair" type="button">Desconectar</button></div></div>`;
 }
 let agVis = 'dia', agMes = null;
-/* O que aparece em cada dia do mês: entregas no dia do prazo, tarefas agendadas no próprio dia e o que foi concluído. */
-function doDia(d) {
-  const h = hoje(), its = [];
-  S.tar.forEach(x => {
-    if (x.feita_em) { if (feitasEm(d).includes(x)) its.push({ x, k:'ok' }); return; }
-    if (x.prazo) { if (x.prazo === d) its.push({ x, k:x.prazo < h ? 'atras' : 'en' }); return; }
-    if ((x.data > h && x.data === d) || (x.data <= h && d === h)) its.push({ x, k:'' });
-  });
-  const pe = { atras:0, en:1, '':2, ok:3 }; return its.sort((a, b) => pe[a.k] - pe[b.k] || porOrdem(a.x, b.x));
-}
 function agendaMes() {
   const h = hoje(), m = agMes || h.slice(0, 7), ini = new Date(m + '-01T12:00:00'), off = (ini.getDay() + 6) % 7;
   const nd = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), dias = [];
   for (let i = -off; i < Math.ceil((off + nd) / 7) * 7 - off; i++) dias.push(addDias(m + '-01', i));
-  const todos = d => [...evDia(d).map(e => ({ t:evHora(e) + ' ' + e.titulo, k:'ev' })), ...doDia(d).map(({ x, k }) => ({ t:x.texto, k }))];
+  const idx = {}, pe = { ev:-1, atras:0, en:1, '':2, ok:3 }, por = (d, it) => (idx[d] = idx[d] || []).push(it);
+  gEv.itens.forEach(e => { if (!e.inteiro) return por(spDia(e.ini), { t:spHora(e.ini) + ' ' + e.titulo, k:'ev', o:e.ini }); for (let d = e.ini; d < e.fim; d = addDias(d, 1)) por(d, { t:'Dia todo ' + e.titulo, k:'ev', o:'' }); });
+  S.tar.forEach(x => { const it = (k, d) => por(d, { t:x.texto, k, x });
+    if (x.feita_em) return it('ok', spDia(x.feita_em));
+    if (x.prazo) return it(x.prazo < h ? 'atras' : 'en', x.prazo);
+    it('', x.data > h ? x.data : h); });
+  Object.values(idx).forEach(l => l.sort((a, b) => pe[a.k] - pe[b.k] || (a.k === 'ev' ? String(a.o).localeCompare(String(b.o)) : porOrdem(a.x, b.x))));
+  const todos = d => idx[d] || [];
   const cel = d => { const its = todos(d), vis = its.slice(0, 4);
     return `<button class="d ${d.slice(0, 7) !== m ? 'fora' : ''} ${d === h ? 'hj' : ''}" data-a="ag-ir" data-v="${d}" type="button" aria-label="${diaLongo(d)}: ${its.length} ${its.length === 1 ? 'item' : 'itens'}"><span class="n">${+d.slice(8)}</span>${vis.map(({ t, k }) => `<span class="it ${k}" title="${esc(t)}">${esc(t)}</span>`).join('')}${its.length > 4 ? `<span class="mais">+ ${its.length - 4}</span>` : ''}</button>`; };
   const lista = dias.filter(d => d.slice(0, 7) === m && (d >= h || todos(d).length)).map(d => { const its = todos(d); if (!its.length && d !== h) return '';
