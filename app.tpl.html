@@ -57,6 +57,19 @@ __EXTRA_CSS__
 .pz .it .bts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
 .st-ok{color:var(--lime);font-weight:600}.st-alt{color:var(--amber);font-weight:600}
 .pin-box{max-width:360px;margin:40px auto;text-align:center}
+.cf-busca{width:100%;height:46px;padding:0 16px;margin-bottom:6px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);font:inherit;font-size:15px;outline:none}
+.cf-busca:focus{border-color:var(--lime)}
+.cf-it{display:grid;grid-template-columns:minmax(140px,1.1fr) minmax(0,1.4fr) minmax(0,1.3fr) auto;gap:16px;align-items:center;padding:14px 4px;border-bottom:1px solid var(--border-soft)}
+.cf-it:last-child{border-bottom:0}
+.cf-p b{font-size:15px;overflow-wrap:anywhere}
+.cf-c{display:flex;align-items:center;gap:8px;min-width:0}
+.cf-c small{display:none;font-size:11px;color:var(--text-muted);width:56px;flex:none}
+.cf-c span{flex:1;min-width:0;font-size:14px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-c .cf-s{font-family:ui-monospace,Menlo,monospace;letter-spacing:.02em;color:var(--text-primary)}
+.cf-b{flex:none;height:28px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:none;color:var(--text-secondary);font:inherit;font-size:12px;cursor:pointer}
+.cf-b:hover{color:var(--text-primary);border-color:var(--border-hover)}
+.cf-a{display:flex;gap:4px}
+@media (max-width:760px){.cf-it{grid-template-columns:1fr;gap:6px}.cf-c small{display:block}.cf-a{justify-content:flex-end}}
 .pin-box h1{font-size:26px;margin:14px 0 6px}
 .pin-box p{font-size:14px;color:var(--text-secondary)}
 .pin-box .ic{width:56px;height:56px;border-radius:50%;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:var(--lime)}
@@ -353,7 +366,7 @@ const addDias = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.get
 const hoje = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 async function loadAll() {
   await db(`central_propostas?status=eq.ativa&deleted_at=is.null&data_expiracao=lt.${hoje()}`, 'PATCH', { status:'expirada' });
-  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu, ent, pec, pco, pla2, ppin, pf] = await Promise.all([
+  const [cli, bri, cop, pro, pre, cfg, tar, pla, fec, imp, met, avu, ent, pec, pco, pla2, ppin, pf, cofRows, cofCfg] = await Promise.all([
     db('central_clientes?select=*&order=nome.asc'),
     db('central_briefings?select=*&order=created_at.desc'),
     db('central_copys?select=*&order=updated_at.desc'),
@@ -372,8 +385,10 @@ async function loadAll() {
     db('central_pessoal_lanc?select=*&order=mes.desc'),
     db('central_config?select=*&chave=eq.pessoal_pin'),
     db('central_portfolio?select=*&deleted_at=is.null&order=ordem.asc,created_at.desc'),
+    db('central_cofre?select=*&order=created_at.asc').catch(e => { if (e instanceof AuthError) throw e; return null; }),
+    db('central_config?select=*&chave=eq.cofre'),
   ]);
-  S.pf = pf;
+  S.pf = pf; S.cof = cofRows || []; S.cofErro = !cofRows; S.cofCfg = (cofCfg[0] && cofCfg[0].valor && cofCfg[0].valor.salt) ? cofCfg[0].valor : null; S.cofCfgRow = !!cofCfg[0];
   S.pla = pla; S.fec = fec; S.imp = (imp[0] && imp[0].valor) || { tipo:'percentual', valor:null };
   S.metas = (met[0] && met[0].valor) || { padrao:null, meses:{} }; S.metasRow = !!met[0]; S.avu = avu; S.ent = ent; S.pec = pec; S.pco = pco; S.plc = pla2; S.pin = (ppin[0] && ppin[0].valor) || {}; S.pinRow = !!ppin[0];
   S.tar = tar;
@@ -404,7 +419,7 @@ async function planosDasPropostas() {
     S.pla = [...S.pla, ...(novos || [])];
   } catch (e) { console.error(e); }
 }
-const TAB = { pf:'central_portfolio', pco:'central_pessoal_contas', plc:'central_pessoal_lanc', ent:'central_entregas', pec:'central_entrega_pecas', avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
+const TAB = { cof:'central_cofre', pf:'central_portfolio', pco:'central_pessoal_contas', plc:'central_pessoal_lanc', ent:'central_entregas', pec:'central_entrega_pecas', avu:'central_entradas', pla:'central_planos', fec:'central_fechamentos', tar:'central_tarefas', cli:'central_clientes', bri:'central_briefings', cop:'central_copys', pro:'central_propostas', pre:'central_previas' };
 const patch = (k, id, body) => db(`${TAB[k]}?id=eq.${encodeURIComponent(id)}`, 'PATCH', body);
 
 /* ============ DOMÍNIO ============ */
@@ -531,6 +546,7 @@ const NAV = [
   ['financeiro', 'Financeiro', '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
   ['-', 'Pessoal'],
   ['pessoal', 'Minhas contas', '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'],
+  ['senhas', 'Senhas', '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="m16 7 3 3"/><path d="m18 5 2 2"/>'],
   ['-', 'Sistema'],
   ['lixeira', 'Lixeira', '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'],
 ];
@@ -953,6 +969,68 @@ function pfEdRender() {
   box.innerHTML = pfEd.map((x, i) => { const src = x.f ? (x.u = x.u || URL.createObjectURL(x.f)) : pfImg(x.p), vid = x.f ? /^video/.test(x.f.type) : pfVid(x.p);
     return `<div class="arq">${vid ? `<video src="${esc(src)}" muted style="width:56px;height:56px;object-fit:cover;border-radius:6px"></video>` : `<img src="${esc(src)}" alt="">`}<div>${i === 0 ? '<b style="color:var(--lime)">Capa</b> · ' : ''}${esc(x.f ? x.f.name : x.p.split('/').pop())}<small>${x.f ? kb(x.f.size) + ' · nova' : 'já publicada'}</small></div><span class="hbtns" style="flex-wrap:nowrap"><button class="btn btn-ghost btn-sm" data-a="pf-im" data-i="${i}" data-v="-1" type="button" aria-label="Subir">↑</button><button class="btn btn-ghost btn-sm" data-a="pf-im" data-i="${i}" data-v="1" type="button" aria-label="Descer">↓</button><button class="btn btn-ghost btn-sm" data-a="pf-im" data-i="${i}" data-v="x" type="button">Remover</button></span></div>`; }).join('');
 }
+/* ---- cofre de senhas: tudo é criptografado no navegador (AES-GCM) com uma chave tirada da senha mestra (PBKDF2).
+   O banco só recebe texto cifrado; sem a senha mestra ninguém lê, nem a própria central. ---- */
+let cofKey = null, cofAte = 0, cofCache = { assin:'', itens:[] }, cofBusca = '', cofVer = {}, cofAbrindo = false;
+const COF_IT = 600000, COF_OK = 'dade-cofre-ok';
+const b64 = u => btoa(String.fromCharCode(...new Uint8Array(u))), unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+async function cofDerivar(senha, salt, it) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt:unb64(salt), iterations:it, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt', 'decrypt']);
+}
+async function cofCifrar(key, obj) { const iv = crypto.getRandomValues(new Uint8Array(12)); const c = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))); return { iv:b64(iv), dados:b64(c) }; }
+async function cofDecifrar(key, r) { const t = await crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(r.iv) }, key, unb64(r.dados)); return JSON.parse(new TextDecoder().decode(t)); }
+const cofAberto = () => cofKey && Date.now() < cofAte;
+const cofTravar = () => { cofKey = null; cofAte = 0; cofCache = { assin:'', itens:[] }; cofVer = {}; };
+['click', 'keydown', 'pointermove'].forEach(ev => document.addEventListener(ev, () => { if (location.hash.startsWith('#/senhas') && cofAberto()) cofAte = Date.now() + 5 * 60 * 1000; }, { passive:true }));
+addEventListener('hashchange', () => { if (!location.hash.startsWith('#/senhas')) cofTravar(); });
+setInterval(() => { if (location.hash.startsWith('#/senhas') && cofKey && !cofAberto()) { cofTravar(); route(); } }, 15000);
+const cofAssin = () => S.cof.map(r => r.id + r.updated_at).join('|');
+async function cofAbrirItens() {
+  if (cofAbrindo || !cofKey) return; cofAbrindo = true; const a = cofAssin();
+  try { const itens = []; for (const r of S.cof) { try { itens.push({ id:r.id, ...(await cofDecifrar(cofKey, r)) }); } catch (e) { itens.push({ id:r.id, plataforma:'(não foi possível abrir)', usuario:'', senha:'', erro:true }); } }
+    itens.sort((x, y) => String(x.plataforma).localeCompare(String(y.plataforma), 'pt', { sensitivity:'base' })); cofCache = { assin:a, itens }; }
+  finally { cofAbrindo = false; }
+  if (location.hash.startsWith('#/senhas')) { const y = scrollY, f = document.activeElement && document.activeElement.id; route(); scrollTo(0, y); if (f && $(f)) { $(f).focus(); const el = $(f); if (el.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length); } }
+}
+const cofTela = () => { const novo = !S.cofCfg;
+  return `<div class="pin-box" style="max-width:400px"><span class="ic">${ic('<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="m16 7 3 3"/><path d="m18 5 2 2"/>')}</span><h1>${novo ? 'Crie a sua senha mestra' : 'Senhas'}</h1>
+    <p>${novo ? 'Ela tranca o cofre. As senhas são embaralhadas no seu aparelho antes de irem para o banco, então só quem sabe a senha mestra consegue ler.' : 'Digite a sua senha mestra para abrir o cofre.'}</p>
+    <form data-s="cof-abrir" style="text-align:left;margin-top:18px"><div class="form-group"><label for="cf_s">Senha mestra</label><input type="password" id="cf_s" autocomplete="${novo ? 'new-password' : 'current-password'}" required minlength="${novo ? 10 : 1}"></div>
+    ${novo ? `<div class="form-group"><label for="cf_s2">Repita a senha mestra</label><input type="password" id="cf_s2" autocomplete="new-password" required></div><p class="hint" style="margin:-4px 0 14px;color:var(--amber)">Use pelo menos 10 caracteres e guarde bem: se esquecer, não tem como recuperar as senhas. Nem eu consigo.</p>` : ''}
+    <p class="pin-err" id="cfErr" role="alert"></p><button class="btn btn-primary" type="submit" id="cf_ok" style="width:100%">${novo ? 'Criar cofre e abrir' : 'Abrir'}</button></form>
+    ${novo ? '' : '<button class="btn btn-ghost btn-sm" data-a="cof-zerar" type="button" style="margin-top:14px">Esqueci a senha mestra</button>'}</div>`; };
+V.senhas = () => {
+  if (S.cofErro) return head('Senhas', 'Cofre de senhas') + '<div class="panel"><p>O cofre ainda não foi criado no banco de dados. Falta rodar o comando de criação no Supabase.</p></div>';
+  if (!cofAberto()) return cofTela();
+  if (cofCache.assin !== cofAssin()) { setTimeout(cofAbrirItens); if (!cofCache.itens.length && S.cof.length) return head('Senhas', 'Abrindo o cofre…') + '<div class="loading">Abrindo…</div>'; }
+  const q = normNome(cofBusca), its = cofCache.itens.filter(x => !q || normNome(x.plataforma).includes(q) || normNome(x.usuario).includes(q));
+  const linha = x => `<div class="cf-it"><div class="cf-p"><b>${esc(x.plataforma)}</b></div>
+      <div class="cf-c"><small>Usuário</small><span>${esc(x.usuario) || '<i>—</i>'}</span>${x.usuario ? `<button class="cf-b" data-a="cof-copiar" data-id="${x.id}" data-k="usuario" type="button">Copiar</button>` : ''}</div>
+      <div class="cf-c"><small>Senha</small><span class="cf-s">${x.senha ? (cofVer[x.id] ? esc(x.senha) : '••••••••••') : '<i>—</i>'}</span>${x.senha ? `<button class="cf-b" data-a="cof-ver" data-id="${x.id}" type="button">${cofVer[x.id] ? 'Ocultar' : 'Mostrar'}</button><button class="cf-b" data-a="cof-copiar" data-id="${x.id}" data-k="senha" type="button">Copiar</button>` : ''}</div>
+      <div class="cf-a"><button class="btn btn-ghost btn-sm" data-a="cof-form" data-id="${x.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-a="cof-del" data-id="${x.id}" type="button">Excluir</button></div></div>`;
+  return head('Senhas', `${cofCache.itens.length} ${cofCache.itens.length === 1 ? 'senha guardada' : 'senhas guardadas'}. O cofre trava sozinho depois de 5 minutos parado.`, `<span class="hbtns"><button class="btn btn-secondary" data-a="cof-travar" type="button">Travar</button><label class="btn btn-secondary" style="cursor:pointer">Importar planilha<input type="file" accept=".xlsx,.xls,.csv" data-c="cof-import" hidden></label><button class="btn btn-primary" data-a="cof-form" type="button">+ Nova senha</button></span>`) +
+    `<div class="panel"><input class="cf-busca" id="cfBusca" type="search" placeholder="Buscar plataforma ou usuário" value="${esc(cofBusca)}" autocomplete="off" data-cof-busca="1">
+    <div class="cf-lista">${its.map(linha).join('') || `<p style="font-size:14px;color:var(--text-muted);padding:12px 0">${cofCache.itens.length ? 'Nada encontrado.' : 'Nenhuma senha ainda. Clique em + Nova senha ou importe a sua planilha.'}</p>`}</div></div>`;
+};
+async function cofImportar(file) {
+  if (!window.XLSX) await new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+  const wb = XLSX.read(await file.arrayBuffer(), { type:'array' }), rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'', raw:false });
+  const n = v => normNome(v);
+  let hi = rows.findIndex(r => r.some(c => ['plataforma', 'site', 'servico', 'app'].includes(n(c))));
+  let cp = 0, cu = 1, cs = 2;
+  if (hi >= 0) { const h = rows[hi].map(n); const f = (...k) => h.findIndex(c => k.includes(c));
+    cp = f('plataforma', 'site', 'servico', 'app'); cu = f('user', 'usuario', 'login', 'email', 'e-mail'.replace('-', '')); cs = f('key', 'senha', 'password', 'pass', 'chave'); if (cu < 0) cu = cp + 1; if (cs < 0) cs = cp + 2; }
+  const ja = new Set(cofCache.itens.map(x => [n(x.plataforma), x.usuario, x.senha].join('\u0001')));
+  const novos = rows.slice(hi + 1).map(r => ({ plataforma:String(r[cp] ?? '').trim(), usuario:String(r[cu] ?? '').trim(), senha:String(r[cs] ?? '').trim() }))
+    .filter(x => x.plataforma && (x.usuario || x.senha) && !ja.has([n(x.plataforma), x.usuario, x.senha].join('\u0001')));
+  if (!novos.length) return toast('Nada novo para importar nessa planilha.');
+  if (!confirm(`Importar ${novos.length} ${novos.length === 1 ? 'senha' : 'senhas'} da planilha "${file.name}"? Elas são criptografadas aqui no seu aparelho antes de salvar.`)) return;
+  const linhas = []; for (const x of novos) linhas.push(await cofCifrar(cofKey, x));
+  for (let i = 0; i < linhas.length; i += 100) await db('central_cofre', 'POST', linhas.slice(i, i + 100));
+  await sync(`${novos.length} ${novos.length === 1 ? 'senha importada' : 'senhas importadas'}. Pode apagar a planilha do seu computador.`);
+}
+const cofGerar = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*?', r = crypto.getRandomValues(new Uint32Array(18)); return [...r].map(v => a[v % a.length]).join(''); };
 /* ---- área pessoal: contas do mês, protegida por PIN ---- */
 let pesAte = 0;
 const pesAberto = () => Date.now() < pesAte;
@@ -1346,6 +1424,20 @@ const A = {
     ta.addEventListener('blur', () => salvar());
     ta.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); salvar(true); } if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ta.blur(); } });
   },
+  'cof-travar'() { cofTravar(); route(); },
+  'cof-ver'(d) { cofVer[d.id] = !cofVer[d.id]; const y = scrollY; route(); scrollTo(0, y); },
+  async 'cof-copiar'(d) { const x = cofCache.itens.find(y => y.id === d.id); if (!x) return; try { await navigator.clipboard.writeText(x[d.k]); toast(d.k === 'senha' ? 'Senha copiada' : 'Usuário copiado'); } catch (e) { toast('Não foi possível copiar.'); } },
+  'cof-form'(d) { const x = d.id && cofCache.itens.find(y => y.id === d.id);
+    modal(mhead(x ? 'Editar senha' : 'Nova senha', 'Fica criptografada no cofre.') + `<form data-s="cof-save" data-id="${x ? x.id : ''}" autocomplete="off"><div class="modal-body">
+      <div class="form-group"><label for="cs_p">Plataforma</label><input id="cs_p" maxlength="120" required value="${esc(x ? x.plataforma : '')}" placeholder="Ex.: Instagram, Registro.br, banco"></div>
+      <div class="form-group"><label for="cs_u">Usuário</label><input id="cs_u" maxlength="200" value="${esc(x ? x.usuario : '')}" placeholder="E-mail ou login" autocomplete="off"></div>
+      <div class="form-group"><label for="cs_s">Senha</label><div style="display:flex;gap:8px"><input id="cs_s" type="password" maxlength="500" value="${esc(x ? x.senha : '')}" autocomplete="new-password" style="flex:1;min-width:0"><button class="btn btn-secondary btn-sm" data-a="cof-mostra" type="button">Mostrar</button><button class="btn btn-secondary btn-sm" data-a="cof-gerar" type="button">Gerar</button></div></div>
+    </div><div class="modal-foot"><button class="btn btn-secondary" data-a="close" type="button">Cancelar</button><button class="btn btn-primary" type="submit" id="cs_ok">Salvar</button></div></form>`); },
+  'cof-mostra'(d, el) { const i = $('cs_s'); i.type = i.type === 'password' ? 'text' : 'password'; el.textContent = i.type === 'password' ? 'Mostrar' : 'Ocultar'; },
+  'cof-gerar'() { const i = $('cs_s'); i.value = cofGerar(); i.type = 'text'; toast('Senha forte gerada'); },
+  async 'cof-del'(d) { const x = cofCache.itens.find(y => y.id === d.id); if (!x || !confirm(`Excluir a senha de ${x.plataforma}?`)) return; await db(`central_cofre?id=eq.${encodeURIComponent(d.id)}`, 'DELETE'); await sync('Senha excluída'); },
+  async 'cof-zerar'() { if (prompt('Sem a senha mestra não dá para abrir as senhas guardadas. Para apagar o cofre inteiro e começar de novo, digite APAGAR:') !== 'APAGAR') return;
+    await db('central_cofre?id=not.is.null', 'DELETE'); await db('central_config?chave=eq.cofre', 'PATCH', { valor:{}, updated_at:new Date().toISOString() }); S.cofCfg = null; cofTravar(); await sync('Cofre apagado. Crie uma senha mestra nova.'); },
   'ag-vis'(d) { agVis = d.v; route(); },
   'ag-mes'(d) { const m = mesAtual(); agMes = d.v === '0' ? null : mesAdd(agMes || m, +d.v); if (agMes === m) agMes = null; route(); },
   'ag-ir'(d) { agVis = 'dia'; agDia = d.v === hoje() ? null : d.v; route(); scrollTo(0, 0); },
@@ -1406,6 +1498,7 @@ const C = {
   'pc-tipo'(el) { $('pc_parc').hidden = el.value !== 'parcelada'; },
   'reu-cli'(el) { const c = cli(el.value); if (!c || !c.email) return; const inp = $('r_e'), l = inp.value.split(',').map(x => x.trim()).filter(Boolean); if (!l.some(x => x.toLowerCase() === c.email.toLowerCase())) inp.value = [...l, c.email].join(', '); if (!$('r_t').value) $('r_t').value = 'Reunião com ' + c.nome; },
   'reu-tipo'() { const pres = document.querySelector('input[name=r_tipo]:checked').value === 'local'; $('r_l').hidden = !pres; if (pres) $('r_l').focus(); },
+  async 'cof-import'(el) { const f = el.files[0]; el.value = ''; if (!f || !cofAberto()) return; await cofImportar(f); },
   'pf-arqs'(el) { const ok = [...el.files].filter(f => /^image\/(png|jpeg|webp|gif)$/.test(f.type) || (f.type === 'video/mp4' && f.size <= 10485760)); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem ou MP4 de até 10 MB.'); pfEd.push(...ok.sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric:true })).map(f => ({ f }))); el.value = ''; pfEdRender(); },
   'ent-arqs'(el) { const ok = [...el.files].filter(f => ARQ_OK.test(f.type) && f.size <= 52428800); if (ok.length < el.files.length) toast('Alguns arquivos ficaram de fora: só imagem, MP4, MOV ou PDF de até 50 MB.'); entArq.push(...ok); el.value = ''; entArqsRender(); },
   async 'ent-dias'(el) { const n = +el.value, c = cli(el.dataset.id); await patch('cli', c.id, { entregas_dias:n });
@@ -1476,6 +1569,31 @@ async function payPatch(id, body, msg, keep) {
   if (keep) payModal(S.pro.find(p => String(p.id) === String(id))); 
 }
 const F = {
+  async 'cof-abrir'(form) {
+    const s1 = $('cf_s').value, err = $('cfErr'), btn = $('cf_ok'); err.textContent = '';
+    if (!S.cofCfg) {
+      if (s1.length < 10) { err.textContent = 'Use pelo menos 10 caracteres.'; return; }
+      if ($('cf_s2').value !== s1) { err.textContent = 'As duas senhas não são iguais.'; return; }
+      btn.disabled = true; btn.textContent = 'Criando…';
+      const salt = b64(crypto.getRandomValues(new Uint8Array(16))), key = await cofDerivar(s1, salt, COF_IT), chk = await cofCifrar(key, COF_OK), valor = { salt, it:COF_IT, chk };
+      if (S.cofCfgRow) await db('central_config?chave=eq.cofre', 'PATCH', { valor, updated_at:new Date().toISOString() }); else await db('central_config', 'POST', { chave:'cofre', valor });
+      S.cofCfg = valor; S.cofCfgRow = true; cofKey = key;
+    } else {
+      btn.disabled = true; btn.textContent = 'Abrindo…';
+      const key = await cofDerivar(s1, S.cofCfg.salt, S.cofCfg.it || COF_IT);
+      try { if (await cofDecifrar(key, S.cofCfg.chk) !== COF_OK) throw 0; } catch (e) { btn.disabled = false; btn.textContent = 'Abrir'; err.textContent = 'Senha mestra incorreta.'; $('cf_s').value = ''; $('cf_s').focus(); return; }
+      cofKey = key;
+    }
+    cofAte = Date.now() + 5 * 60 * 1000; cofCache = { assin:'', itens:[] }; route();
+  },
+  async 'cof-save'(form) {
+    if (!cofAberto()) { closeModal(); return route(); }
+    const id = form.dataset.id, obj = { plataforma:$('cs_p').value.trim(), usuario:$('cs_u').value.trim(), senha:$('cs_s').value };
+    if (!obj.plataforma) return toast('Diga de qual plataforma é a senha.');
+    const c = await cofCifrar(cofKey, obj);
+    if (id) await patch('cof', id, { ...c, updated_at:new Date().toISOString() }); else await db('central_cofre', 'POST', c);
+    closeModal(); await sync(id ? 'Senha atualizada' : 'Senha guardada');
+  },
   async 'reu-save'(form) {
     const titulo = $('r_t').value.trim(), dia = $('r_d').value, hora = $('r_h').value, dur = +$('r_du').value || 60, pres = document.querySelector('input[name=r_tipo]:checked').value === 'local';
     const mails = $('r_e').value.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean), ruins = mails.filter(x => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
@@ -1678,6 +1796,7 @@ document.addEventListener('change', e => { if (e.target.name === 'cobranca') syn
 document.addEventListener('submit', e => { const f = e.target.closest('[data-s]'); if (f && F[f.dataset.s]) { e.preventDefault(); run(F[f.dataset.s], f); } });
 document.addEventListener('input', e => { const el = e.target; if (!el.classList || !el.classList.contains('money')) return; const v = el.value.replace(/\D/g, ''); el.value = v ? (parseInt(v, 10) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('input', e => { if (!e.target.dataset || !e.target.dataset.cofBusca) return; cofBusca = e.target.value; const y = scrollY, pos = e.target.selectionStart; route(); scrollTo(0, y); const b = $('cfBusca'); if (b) { b.focus(); b.setSelectionRange(pos, pos); } });
 document.addEventListener('input', e => { const el = e.target; if (!el.matches || !el.matches('[data-pin],[data-pin2]')) return; el.value = el.value.replace(/\D/g, '').slice(-1);
   if (el.value) { const nx = el.nextElementSibling || (el.matches('[data-pin]') && el.form.querySelector('[data-pin2="0"]')); if (nx) nx.focus(); else el.form.requestSubmit(); } });
 document.addEventListener('keydown', e => { const el = e.target; if (e.key === 'Backspace' && el.matches && el.matches('[data-pin],[data-pin2]') && !el.value && el.previousElementSibling) el.previousElementSibling.focus(); });
