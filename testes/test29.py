@@ -18,6 +18,15 @@ async def main():
     await pg.click('[data-a=pro-vis][data-v=todas]'); await pg.click('[data-a=pro-form][data-id="11"]'); await pg.wait_for_selector('#p_parc')
     PID[0] = await pg.get_attribute('[data-a=pro-form][data-id="11"]','data-id'); print('padrão:', await pg.input_value('#p_parc')); await pg.select_option('#p_parc', '3'); await pg.click('#modalBox [type=submit]'); await pg.wait_for_timeout(800)
     print('salvo:', PR().get('parcelas_cartao'))
+    for x in DB['central_proposta_servicos']: x.setdefault('escopo_custom', None); x.setdefault('entrega_custom', None)
+    await pg.reload(); await pg.wait_for_timeout(800); await pg.click('[data-a=pro-vis][data-v=todas]'); await pg.click('[data-a=pro-form][data-id="11"]'); await pg.wait_for_selector('#p_parc')
+    print('campo parcelas visível:', await pg.is_visible('#p_parc'), await pg.input_value('#p_parc'))
+    await pg.click('[data-a=svc-add]'); r = pg.locator('.svc-row').last
+    await r.locator('[name=servico]').select_option('__custom__'); print('textareas visíveis:', await r.locator('[name=escopo_custom]').is_visible())
+    await r.locator('[name=servico_custom]').fill('Vídeo institucional'); await r.locator('[name=valor]').fill('250000')
+    await r.locator('[name=escopo_custom]').fill('Roteiro\nCaptação em estúdio'); await r.locator('[name=entrega_custom]').fill('- 1 vídeo de 60s\n- Versão 9:16')
+    await pg.screenshot(path='pc_form.png'); await pg.click('#modalBox [type=submit]'); await pg.wait_for_timeout(900)
+    sv = [x for x in DB['central_proposta_servicos'] if x['proposta_id'] == PR()['id'] and x['servico'] == 'Vídeo institucional']; print('salvo custom:', sv and (sv[-1].get('escopo_custom'), sv[-1].get('entrega_custom')))
     import json
     async def rp(route):
         if route.request.method == 'OPTIONS': return await route.fulfill(status=204, headers=T.CORS)
@@ -26,7 +35,8 @@ async def main():
     await ctx.route('**/rpc/central_proposta_publica', rp)
     pp = await ctx.new_page(); pp.on('pageerror', lambda e: errs.append(str(e)))
     await pp.goto(BASE + 'proposta.html?slug='+PR()['slug']+''); await pp.wait_for_selector('#hero'); await pp.wait_for_timeout(500)
-    t = await pp.content(); print('proposta 3x:', 'em até 3x' in t, '4x' in t)
+    t = await pp.content(); print('proposta 3x:', 'em até 3x' in t, '4x' in t, '| custom:', 'Captação em estúdio' in t, 'Versão 9:16' in t, '- 1 vídeo' in t)
+    await pp.locator('text=Vídeo institucional').first.scroll_into_view_if_needed(); await pp.screenshot(path='pc_pub.png')
     await pp.goto(BASE + 'pagamento.html?slug='+PR()['slug']+''); await pp.wait_for_timeout(1200)
     t = await pp.content(); print('pagamento 3x:', 'em até 3x' in t, 'em até 4x' in t)
     for p in DB['central_propostas']: p.pop('parcelas_cartao', None)
