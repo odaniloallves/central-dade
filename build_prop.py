@@ -161,7 +161,7 @@ function pagina(pr){
   const wppLink='https://wa.me/'+wpp+'?text='+encodeURIComponent('Olá! Estou vendo a proposta da dade.design para '+pr.cliente_nome+'.');
   const validade=dmy(pr.data_expiracao),numero=String(pr.id).padStart(4,'0');
   const aprovada=!!pr.aprovada_em,payLink='pagamento.html?slug='+encodeURIComponent(pr.slug);
-  const condTxt=[tu>0?'Pix: 50% na aprovação e 50% na entrega':'',tu>0?'Cartão de crédito: valor total em até 4x':'',tm>0?'Mensalidade por Pix'+(pr.dia_cobranca?', todo dia '+Number(pr.dia_cobranca):'')+', após cada mês de trabalho':''].filter(Boolean).join('<br>');
+  const condTxt=[tu>0?'Pix: 50% na aprovação e 50% na entrega':'',tu>0?'Cartão de crédito: valor total em até '+(Number(pr.parcelas_cartao)||4)+'x':'',tm>0?'Mensalidade por Pix'+(pr.dia_cobranca?', todo dia '+Number(pr.dia_cobranca):'')+', após cada mês de trabalho':''].filter(Boolean).join('<br>');
   document.title='Proposta para '+pr.cliente_nome+' | dade.design';
   if(pr.status==='expirada'||pr.status==='perdida') return aviso('Esta proposta não está mais disponível',`A proposta preparada para <strong>${cliente}</strong>${validade?` era válida até ${validade}`:''}. Se ainda fizer sentido para vocês, é só chamar que eu preparo uma versão atualizada.`,`<a href="${wppLink}" target="_blank" rel="noopener" class="btn btn-primary">${svgWpp}Pedir nova proposta</a>`);
   return `__BODY__`;
